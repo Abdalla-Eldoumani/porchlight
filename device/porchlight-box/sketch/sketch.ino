@@ -1,16 +1,17 @@
-// Porchlight box, MCU side (STM32 on the UNO Q).
-// Reads the two buttons and the motion sensor, drives the vibration motor and
-// the LED matrix. The Linux side calls these functions over the Bridge.
-//
-// Wiring: I'm OK button D2 to GND, Help button D4 to GND (internal pull-ups),
-// vibration module IN on D5, PIR OUT on D7. All logic is 3.3 V.
+// Porchlight UNO Q: physical inputs stay on the MCU; Linux owns networking.
+// Verified wiring: PIR D2, button D3 to GND (INPUT_PULLUP), green D8, red D9.
+// D5 controls the existing motor driver/module, HIGH=ON, LOW=OFF.
+// Enable only after the driver's voltage/current/protection are verified.
 #include "Arduino_RouterBridge.h"
 #include <Arduino_LED_Matrix.h>
 
-const int PIN_OK = 2;
-const int PIN_HELP = 4;
-const int PIN_MOTOR = 5;
-const int PIN_PIR = 7;
+#ifndef PORCHLIGHT_MOTOR_ENABLED
+#define PORCHLIGHT_MOTOR_ENABLED 0
+#endif
+const int PIN_PIR = 2, PIN_BUTTON = 3, PIN_MOTOR = 5;
+const int PIN_GREEN = 8, PIN_RED = 9;
+const unsigned long DEBOUNCE_MS = 30, DOUBLE_PRESS_MS = 600;
+const unsigned long GREEN_MS = 5000, MOTION_INTERVAL_MS = 2000;
 
 // Same frames, same order as web/patterns.js: idle, ok, ask, help, visitor.
 uint8_t FRAMES[5][104] = {
@@ -66,59 +67,157 @@ uint8_t FRAMES[5][104] = {
   }
 };
 const int IDLE = 0, OK = 1, HELP = 3;
-
 Arduino_LED_Matrix matrix;
-int pending = 0;                  // bit 0: OK pressed, bit 1: help pressed, bit 2: motion
-int lastOk = HIGH, lastHelp = HIGH, lastPir = LOW;
-unsigned long lastPress = 0, motorOffAt = 0;
+int pending = 0;                  // unchanged bits: OK=1, Help=2, motion=4
+int helpFrame = HELP;
+int rawButton = HIGH, stableButton = HIGH, lastPir = LOW;
+bool waitingSecond = false, helpActive = false, helpPending = false;
+bool greenActive = false, motionReported = false;
+unsigned long buttonChangedAt = 0, firstPressAt = 0, greenAt = 0, lastMotionAt = 0;
+
+// Pattern 1: short-short-long wellness prompt. Pattern 2: two short acknowledgment pulses.
+const unsigned int WELLNESS[] = {200, 150, 200, 150, 600};
+const unsigned int ACKNOWLEDGED[] = {200, 150, 200};
+const unsigned int *vibration = nullptr;
+int vibrationLength = 0, vibrationStep = 0, queuedPattern = 0;
+unsigned long vibrationAt = 0, vibrationDuration = 0;
+
+void motor_output(bool on) {
+#if PORCHLIGHT_MOTOR_ENABLED
+  digitalWrite(PIN_MOTOR, on ? HIGH : LOW);
+#endif
+}
 
 void show(int frame) {
+  if (helpPending) frame = HELP;   // a stale poll must not imply acknowledgment
+  else if (helpActive) frame = helpFrame;
   if (frame >= 0 && frame < 5) matrix.draw(FRAMES[frame]);
 }
 
-void buzz(int ms) {
-  digitalWrite(PIN_MOTOR, HIGH);
-  motorOffAt = millis() + ms;
+void buzz(int ms) {              // retain the original Bridge command
+  vibration = nullptr;
+  vibrationLength = 1;
+  vibrationStep = 0;
+  vibrationAt = millis();
+  vibrationDuration = ms > 0 ? (unsigned long)ms : 0;
+  motor_output(vibrationDuration > 0);
 }
 
-// Returns what happened since the last call and clears it, so a press is
-// reported exactly once even if the network is slow.
+void buzz_pattern(int pattern) {
+  if (pattern != 1 && pattern != 2) { buzz(700); return; }
+  if (vibrationLength) { queuedPattern = pattern; return; }
+  vibration = pattern == 1 ? WELLNESS : ACKNOWLEDGED;
+  vibrationLength = pattern == 1 ? 5 : 3;
+  vibrationStep = 0;
+  vibrationAt = millis();
+  vibrationDuration = vibration[0];
+  motor_output(true);
+}
+
+// 0=no server Help, 1=requested, 2=acknowledged, 3=resolved.
+// Bit 2 (4) is set ONLY after a Help POST succeeds, releasing the local latch.
+void help_state(int command) {
+  if (command & 4) helpPending = false;
+  int state = command & 3;
+  if (state == 1 || state == 2) {
+    helpActive = true;
+    helpFrame = state == 2 ? 4 : HELP;
+    show(helpFrame);
+  }
+  if (state == 3 && !helpPending) helpActive = false;
+  digitalWrite(PIN_RED, (helpActive || helpPending) ? HIGH : LOW);
+  if (helpActive || helpPending) digitalWrite(PIN_GREEN, LOW);
+}
+
 int read_inputs() {
   int v = pending;
   pending = 0;
   return v;
 }
 
+void request_help() {
+  pending |= 2;
+  helpActive = helpPending = true;
+  show(HELP);
+}
+
+void activity(unsigned long now) {
+  greenActive = true;
+  greenAt = now;
+}
+
 void setup() {
-  pinMode(PIN_OK, INPUT_PULLUP);
-  pinMode(PIN_HELP, INPUT_PULLUP);
+  pinMode(PIN_BUTTON, INPUT_PULLUP);
   pinMode(PIN_PIR, INPUT);
+  pinMode(PIN_GREEN, OUTPUT);
+  pinMode(PIN_RED, OUTPUT);
+  digitalWrite(PIN_GREEN, LOW);
+  digitalWrite(PIN_RED, LOW);
+#if PORCHLIGHT_MOTOR_ENABLED
   pinMode(PIN_MOTOR, OUTPUT);
+  digitalWrite(PIN_MOTOR, LOW);
+#endif
   matrix.begin();
   matrix.setGrayscaleBits(1);
   show(IDLE);
   Bridge.begin();
-  // provide_safe runs these inside loop(), so they never race with it.
   Bridge.provide_safe("read_inputs", read_inputs);
   Bridge.provide_safe("show", show);
   Bridge.provide_safe("buzz", buzz);
+  Bridge.provide_safe("buzz_pattern", buzz_pattern);
+  Bridge.provide_safe("help_state", help_state);
 }
 
 void loop() {
-  int ok = digitalRead(PIN_OK), help = digitalRead(PIN_HELP), pir = digitalRead(PIN_PIR);
-  bool settled = millis() - lastPress > 250;       // debounce
-  if (ok == LOW && lastOk == HIGH && settled) {
-    pending |= 1; lastPress = millis();
-    show(OK); buzz(120);                           // answer the press even if Wi-Fi is down
+  unsigned long now = millis();
+  int button = digitalRead(PIN_BUTTON);
+  if (button != rawButton) { rawButton = button; buttonChangedAt = now; }
+  if (button != stableButton && now - buttonChangedAt >= DEBOUNCE_MS) {
+    stableButton = button;
+    if (button == LOW) {
+      if (waitingSecond && now - firstPressAt <= DOUBLE_PRESS_MS) {
+        waitingSecond = false;
+        pending |= 1;           // double press produces OK only
+        activity(now);
+        show(OK);
+      } else {
+        if (waitingSecond) request_help();
+        waitingSecond = true;
+        firstPressAt = now;
+      }
+    }
   }
-  if (help == LOW && lastHelp == HIGH && settled) {
-    pending |= 2; lastPress = millis();
-    show(HELP); buzz(400);
+  if (waitingSecond && now - firstPressAt >= DOUBLE_PRESS_MS) {
+    waitingSecond = false;
+    request_help();              // single press waits for the double-press window
   }
-  if (pir == HIGH && lastPir == LOW) pending |= 4;
-  lastOk = ok; lastHelp = help; lastPir = pir;
-  if (motorOffAt && (long)(millis() - motorOffAt) >= 0) {
-    digitalWrite(PIN_MOTOR, LOW);
-    motorOffAt = 0;
+
+  int pir = digitalRead(PIN_PIR);
+  if (pir == HIGH && lastPir == LOW && (!motionReported || now - lastMotionAt >= MOTION_INTERVAL_MS)) {
+    pending |= 4;                // motion never becomes a manual OK
+    motionReported = true;
+    lastMotionAt = now;
+    activity(now);
+  }
+  lastPir = pir;
+  if (greenActive && now - greenAt >= GREEN_MS) greenActive = false;
+  digitalWrite(PIN_RED, (helpActive || helpPending) ? HIGH : LOW);
+  digitalWrite(PIN_GREEN, greenActive && !helpActive && !helpPending ? HIGH : LOW);
+
+  if (vibrationLength && now - vibrationAt >= vibrationDuration) {
+    vibrationStep++;
+    if (vibrationStep >= vibrationLength) {
+      vibrationLength = 0;
+      motor_output(false);
+      if (queuedPattern) {
+        int next = queuedPattern;
+        queuedPattern = 0;
+        buzz_pattern(next);
+      }
+    } else {
+      vibrationAt = now;
+      vibrationDuration = vibration[vibrationStep];
+      motor_output(vibrationStep % 2 == 0);
+    }
   }
 }

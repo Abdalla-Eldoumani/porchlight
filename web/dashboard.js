@@ -7,19 +7,50 @@ function statusLine(p) {
     case "ok": return `OK at ${p.last_ok}`;
     case "waiting": return `Waiting for today's check-in (by ${p.cutoff})`;
     case "asked": return "Asked to press I'm OK";
-    case "help": return `Pressed HELP · asking ${a.asking}`;
+    case "help": return `Pressed Help · asking ${a.asking}`;
     case "alert": return `${a.reason} · asking ${a.asking}`;
     case "visitor": return `${a.going} is going · about ${a.eta}`;
   }
 }
 
+function eventTime(value) {
+  return value ? new Date(value).toLocaleString("en-CA", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/Edmonton" }) : "not yet";
+}
+
+function elapsed(seconds) {
+  if (seconds == null) return "Not recorded";
+  const minutes = Math.floor(seconds / 60);
+  return minutes < 1 ? "Less than a minute" : minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} hr ${minutes % 60} min`;
+}
+
 function personCard(p) {
   const a = p.alert;
+  const check = p.box && p.box.manual_check;
   const card = el("article", { class: `person ${p.status}` },
     el("header", {},
       el("h3", {}, p.name, " ", el("span", { class: "muted small" }, p.community)),
       p.simulated ? el("span", { class: "tag" }, "simulated") : el("span", { class: "tag" }, "real box")),
     el("div", { class: `status ${p.status}` }, statusLine(p)));
+  card.append(el("p", { class: "small muted" },
+    `Last I'm OK: ${eventTime(p.last_ok_at)} · Last movement: ${eventTime(p.last_motion_at)}`),
+    el("p", { class: "small muted" }, `Last active: ${p.last_activity_seconds == null ? "never" : elapsed(p.last_activity_seconds) + " ago"} · Assigned to ${p.assigned_responder}`));
+  if (p.help_resolved_at && p.box.help_status === "resolved") {
+    card.append(el("div", { class: "status ok small" }, `Help resolved ${eventTime(p.help_resolved_at)}`));
+  }
+  if (check) {
+    const seconds = Math.ceil(check.remaining_seconds);
+    const remaining = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+    const text = check.status === "pending"
+      ? `Check-in sent · ${remaining} left · ${check.received_at ? "the box has it" : "waiting for the box"}${p.box_online ? "" : " · box offline"}`
+      : check.status === "confirmed" ? `Check-in answered ${eventTime(check.response_at)}`
+      : "No answer to the check-in. Follow up with them.";
+    card.append(el("p", { class: `status ${check.status === "unanswered" ? "alert" : check.status === "confirmed" ? "ok" : "asked"} small` }, text),
+      el("p", { class: "small muted" }, `Asked ${eventTime(check.requested_at)} by ${check.requested_by}`));
+  }
+  card.append(el("div", { class: "row" },
+    el("button", { class: "btn", disabled: check && check.status === "pending", onclick: () => requestCheckin(p.id) }, "Ask for a check-in"),
+    check && check.status === "unanswered" && (!a || a.rule !== "help")
+      ? el("button", { class: "btn", onclick: () => requestAssistance(p.id) }, "Send someone") : null));
   if (a && a.message) {
     card.append(el("p", { class: "msg", dir: "auto" }, a.message,
       el("small", {}, a.message_source === "gemini" ? "Message worded by Gemini from the rule's facts" : "Message from a template")));
@@ -27,6 +58,7 @@ function personCard(p) {
   if (a) {
     card.append(el("div", { class: "row" },
       el("span", { class: "small muted" }, "Next: " + (a.chain.slice(a.step + 1).join(" → ") || "nobody")),
+      a.rule === "help" && !a.going ? el("button", { class: "btn", onclick: () => act(a.id, "going") }, "I'm going") : null,
       el("button", { class: "btn", onclick: () => act(a.id, "cant") }, "Skip to next person"),
       el("button", { class: "btn", onclick: () => act(a.id, "resolved") }, "Mark resolved")));
   }
@@ -103,7 +135,16 @@ function moveNowLine(now) {
 }
 
 // ---- actions ---------------------------------------------------------------
-async function act(id, action) { await api(`/api/alerts/${id}/${action}`, {}); refresh(); }
+async function caregiverAction(path, body, message) {
+  try {
+    await api(path, body);
+    document.getElementById("action-status").textContent = message;
+    refresh();
+  } catch (e) { document.getElementById("action-status").textContent = "Action failed: " + e.message; }
+}
+async function act(id, action) { return caregiverAction(`/api/alerts/${id}/${action}`, {}, "Updated."); }
+async function requestCheckin(rid) { return caregiverAction(`/api/residents/${rid}/check-in`, {}, "Check-in sent."); }
+async function requestAssistance(rid) { return caregiverAction(`/api/residents/${rid}/press`, { kind: "help" }, "Asked the first person on their list."); }
 async function setMode(mode, speed) { await api("/api/mode", { mode, speed }); chartDay = null; refresh(); }
 async function setSpeed(speed) { await api("/api/speed", { speed }); refresh(); }
 

@@ -64,7 +64,7 @@
     const headers = { "Content-Type": "application/json", "X-Device-Key": q.get("key") || "" };
     const matrix = document.getElementById("matrix");
     const dots = Array.from({ length: 104 }, () => matrix.appendChild(document.createElement("i")));
-    let lastBuzz = null, audio = null;
+    let lastBuzz = null, audio = null, receivedCheckin = null;
     document.getElementById("who").textContent = `box for: ${rid}`;
 
     function draw(name) {
@@ -86,6 +86,7 @@
       document.getElementById("line").textContent = s.text;
       if (lastBuzz !== null && s.buzz > lastBuzz) buzz();
       lastBuzz = s.buzz;
+      receivedCheckin = s.manual_check && s.manual_check.status === "pending" ? s.manual_check.id : null;
     }
     async function send(kind) {
       audio = audio || new AudioContext();
@@ -95,7 +96,8 @@
     }
     async function poll() {
       try {
-        const res = await fetch(`/api/device/${rid}`, { headers });
+        const receipt = receivedCheckin === null ? "" : `?checkin_received=${receivedCheckin}`;
+        const res = await fetch(`/api/device/${rid}${receipt}`, { headers });
         document.getElementById("conn").classList.toggle("off", !res.ok);
         document.getElementById("conn").textContent = res.ok ? "Connected" : "Not connected";
         if (res.ok) show(await res.json());

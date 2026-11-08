@@ -70,6 +70,18 @@ class Alert:
 
 
 @dataclass
+class ManualCheck:
+    id: int
+    resident_id: str
+    requested_at: datetime
+    deadline: datetime
+    requested_by: str
+    status: str = "pending"
+    response_at: datetime = None
+    received_at: datetime = None   # client applied the request, not proof the resident noticed
+
+
+@dataclass
 class State:
     last_ok: datetime = None
     last_motion: datetime = None
@@ -81,12 +93,16 @@ class State:
     display: str = "idle"        # idle | ok | ask | help | visitor
     text: str = ""
     buzz: int = 0                # the box buzzes whenever this number goes up
+    buzz_pattern: str = "default"
+    manual_check: ManualCheck = None
+    last_help_id: int = None
 
 
 class Engine:
     def __init__(self, residents, volunteers):
         self.residents = {r.id: r for r in residents}
         self.volunteers = {v["id"]: v for v in volunteers}
+        self._check_ids = itertools.count(1)
         self.reset()
 
     def reset(self):
@@ -124,6 +140,29 @@ class Engine:
         a = self.alerts.get(self.state[rid].alert_id)
         return a if a and not a.closed_at else None
 
+    def expire_manual_check(self, rid, now):
+        check = self.state[rid].manual_check
+        if check and check.status == "pending" and now >= check.deadline:
+            check.status = "unanswered"
+            self.log(now, "checkin", f"{self.residents[rid].name}: wellness check unanswered.", rid)
+
+    def request_checkin(self, rid, now, who, timeout=timedelta(minutes=5)):
+        self.expire_manual_check(rid, now)
+        s = self.state[rid]
+        if s.manual_check and s.manual_check.status == "pending":
+            return s.manual_check   # retries must not restart the timeout or notification
+        s.manual_check = ManualCheck(next(self._check_ids), rid, now, now + timeout, who)
+        s.buzz += 1
+        s.buzz_pattern = "wellness"
+        self.log(now, "checkin", f"{who} requested a wellness check for {self.residents[rid].name}.", rid)
+        return s.manual_check
+
+    def checkin_received(self, rid, check_id, now):
+        self.expire_manual_check(rid, now)
+        check = self.state[rid].manual_check
+        if check and check.id == check_id and check.status == "pending" and not check.received_at:
+            check.received_at = now
+
     def close(self, a, now, by, why):
         a.closed_at, a.closed_by = now, by
         s = self.state[a.resident_id]
@@ -141,8 +180,14 @@ class Engine:
             s.last_motion = now
             return None
         if kind == "ok":
+            self.expire_manual_check(rid, now)
+            check = s.manual_check
+            if not simulated and check and check.status == "pending":
+                check.status, check.response_at = "confirmed", now
+                self.log(now, "checkin", f"{r.name}: wellness check confirmed by I'm OK.", rid)
             s.last_ok, s.wave_at = now, None
-            s.display, s.text = "ok", ""
+            if not a or a.rule != "help":
+                s.display, s.text = "ok", ""
             if a and a.rule != "help":
                 self.close(a, now, rid, f"pressed I'm OK{tag}")
             else:
@@ -151,13 +196,17 @@ class Engine:
         if kind == "help":
             s.display, s.text = "help", "Help is being called"
             s.buzz += 1
+            s.buzz_pattern = "default"
             facts = self.facts(rid, now, conditions)
             if a:                       # upgrade whatever was open to a help alert
+                s.last_help_id = a.id
                 a.rule, a.reason, a.facts = "help", REASONS["help"], facts
                 a.step_at, a.messages = now, {}
                 self.log(now, "alert", f"{r.name} pressed HELP{tag}.", rid)
                 return a
-            return self.open_alert(rid, "help", now, facts)
+            a = self.open_alert(rid, "help", now, facts)
+            s.last_help_id = a.id
+            return a
         raise ValueError(f"unknown event {kind}")
 
     def volunteer_action(self, vid, alert_id, action, now, eta_min=None):
@@ -172,6 +221,7 @@ class Engine:
             s.display = "visitor"
             s.text = f"{self.name(vid)} is coming, about {hm(a.eta)}"
             s.buzz += 1
+            s.buzz_pattern = "acknowledged"
             self.log(now, "going", f"{self.name(vid)} is going to {r.name}, there by {hm(a.eta)}.", r.id)
         elif action == "cant":
             if a.ack_by == vid:
@@ -212,9 +262,11 @@ class Engine:
                 if not self.current_alert(rid) and not recent:
                     s.wave_at, s.display, s.text = now, "ask", "Please press I'm OK"
                     s.buzz += 1
+                    s.buzz_pattern = "default"
         self.wave_active = cold
 
         for rid, r in self.residents.items():
+            self.expire_manual_check(rid, now)
             s, a = self.state[rid], self.current_alert(rid)
             if r.simulated and s.wave_at and r.script.get("wave_reply_min") is not None:
                 if now >= s.wave_at + timedelta(minutes=r.script["wave_reply_min"]):
