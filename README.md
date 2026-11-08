@@ -49,7 +49,7 @@ Python 3.12 or newer. In Git Bash:
 ```bash
 python -m venv .venv && source .venv/Scripts/activate   # macOS/Linux: .venv/bin/activate
 pip install -r requirements.txt
-python -m uvicorn server.app:app --host 0.0.0.0 --port 8000
+python -m uvicorn server.app:app --host 0.0.0.0 --port 8000 --loop asyncio:SelectorEventLoop
 ```
 
 Open http://localhost:8000. The demo screen replays January 13, 2024 from 3:15 pm at 30 times real speed, with Margaret's box on the left, a map of Calgary in the middle and a volunteer's phone on the right. The bar under the clock says what is happening and what to try next; **Skip ahead** jumps to the next thing that happens. When anyone presses Help, the replay drops to real time so the call plays out live.
