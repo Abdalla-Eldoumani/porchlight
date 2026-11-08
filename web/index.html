@@ -6,6 +6,7 @@
   <title>Porchlight · Demo</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="mark.svg" type="image/svg+xml">
   <script src="https://cdn.jsdelivr.net/npm/@auth0/auth0-spa-js@2.30.0/dist/auth0-spa-js.production.js"></script>
@@ -51,16 +52,36 @@
     .motion { margin-top: 0.9rem; width: 100%; background: transparent; border: 1px dashed #8b7656; border-radius: 8px; padding: 0.45rem; color: #3b2e1d; font-weight: 700; }
     .online { margin-top: 0.8rem; text-align: center; }
 
-    .map { background: var(--ink-2); border: 1px solid var(--line); border-radius: 14px; padding: 0.6rem; position: relative; }
-    .map svg { width: 100%; height: auto; display: block; max-height: 62vh; }
-    .map .city { fill: #121a2f; stroke: #2e3a5c; stroke-width: 1.5; }
-    .map .river { fill: none; stroke: var(--sky); stroke-opacity: 0.35; stroke-width: 2.4; stroke-linecap: round; }
-    .map .home .dot { stroke: var(--ink); stroke-width: 2; }
-    .map .home text { fill: var(--text); font: 700 18px var(--body); paint-order: stroke; stroke: var(--ink); stroke-width: 4px; }
-    .map .home text.sub { fill: var(--muted); font-weight: 400; font-size: 14px; }
-    .map .ring { fill: none; stroke-width: 2.5; opacity: 0; }
-    .map .home.asked .ring, .map .home.alert .ring, .map .home.help .ring { animation: ring 1.6s ease-out infinite; }
-    @keyframes ring { 0% { r: 11; opacity: 0.9; } 100% { r: 40; opacity: 0; } }
+    .map { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; position: relative; background: #0e1424; }
+    #map { height: min(62vh, 560px); background: #0e1424; font: inherit; }
+    #map .leaflet-tile-pane { filter: invert(1) hue-rotate(185deg) brightness(0.85) contrast(0.9) saturate(0.4); }
+    .map::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 400; border-radius: 14px;
+                  box-shadow: inset 0 0 80px 10px rgba(9, 13, 24, 0.85); }
+    .pin { position: relative; width: 26px; height: 26px; }
+    .pin .dot { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 50%; font: 800 12px var(--body);
+                color: var(--ink); background: var(--c); border: 2px solid var(--ink); box-shadow: 0 0 18px 2px var(--c); }
+    .pin .ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--c); opacity: 0; pointer-events: none; }
+    .pin.asked .ring, .pin.alert .ring, .pin.help .ring { animation: pulse 1.6s ease-out infinite; }
+    .pin .tag { position: absolute; left: 32px; top: 50%; transform: translateY(-50%); white-space: nowrap; padding: 0.25rem 0.55rem;
+                background: rgba(9, 13, 24, 0.82); border: 1px solid var(--line-2); border-radius: 8px; line-height: 1.15; backdrop-filter: blur(4px); }
+    .pin.above .tag { left: 50%; top: auto; bottom: 32px; transform: translateX(-50%); }
+    .pin .tag b { display: block; color: var(--text); font-size: 0.86rem; }
+    .pin .tag small { color: var(--muted); font-size: 0.72rem; }
+    .pin.ok { --c: var(--mint); } .pin.waiting { --c: var(--faint); } .pin.asked, .pin.visitor { --c: var(--amber); }
+    .pin.alert, .pin.help { --c: var(--coral); }
+    .pin.help .tag, .pin.alert .tag { border-color: var(--coral); }
+    @keyframes pulse { 0% { transform: scale(1); opacity: 0.9; } 100% { transform: scale(2.8); opacity: 0; } }
+    .leaflet-container a { color: var(--sky); }
+    .leaflet-control-attribution { background: rgba(9, 13, 24, 0.75) !important; color: var(--faint); font-size: 0.66rem; }
+    .leaflet-bar a { background: var(--panel-2); color: var(--text); border-color: var(--line-2); }
+    .leaflet-bar a:hover { background: var(--line); }
+    .dark-pop .leaflet-popup-content-wrapper, .dark-pop .leaflet-popup-tip { background: var(--panel); color: var(--text); border: 1px solid var(--line-2); }
+    .dark-pop .leaflet-popup-content { margin: 0.9rem 1rem; font: inherit; }
+    .pop h3 { font-size: 1.1rem; margin: 0; }
+    .pop p { margin: 0.35rem 0; }
+    .pop .btn { width: 100%; margin-top: 0.5rem; }
+    .pop-note { font-weight: 700; color: var(--amber); } .pop-note.ok { color: var(--mint); } .pop-note.warn { color: var(--coral); }
+    @media (prefers-reduced-motion: reduce) { .pin .ring { animation: none !important; } }
     .legend { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.6rem; font-size: 0.82rem; }
     .credit { position: absolute; right: 0.8rem; bottom: 0.5rem; font-size: 0.68rem; color: var(--faint); }
 
@@ -171,8 +192,7 @@
       <div class="mapcol">
         <div class="pane-title"><h2>Calgary</h2><span class="small muted" id="answered"></span></div>
         <div class="map">
-          <svg id="map" role="img" aria-label="Map of Calgary with each person's home"></svg>
-          <span class="credit">Map © OpenStreetMap contributors</span>
+          <div id="map" role="region" aria-label="Map of Calgary. Select a home to see how they are and ask for a check-in."></div>
         </div>
         <div class="legend">
           <span class="status ok">OK</span><span class="status asked">Asked</span><span class="status alert">No answer</span>
@@ -181,7 +201,7 @@
       </div>
 
       <div>
-        <div class="pane-title"><h2>A volunteer's phone</h2><span class="small muted" id="phonewho"></span></div>
+        <div class="pane-title"><h2>A caregiver's phone</h2><span class="small muted" id="phonewho"></span></div>
         <div class="phone" id="phone">
           <div class="screen2">
             <div class="notch"></div>
@@ -210,16 +230,16 @@
     <div class="card">
       <div class="introbrand"><img src="mark.svg" alt="" width="56" height="56"><div><div class="wordmark big" aria-hidden="true">porchl<span class="i">i</span>ght</div><div class="slogan">A light left on for every neighbour.</div></div></div>
       <div class="eyebrow">Hack the Change 2026 · Calgary</div>
-      <h1>When it's −30 and the grid is failing, someone checks on the neighbours.</h1>
-      <p class="muted">This replays Saturday, January 13, 2024, from the AESO's own records. That evening, every phone in Alberta got an emergency alert asking people to save power.</p>
+      <h1>Someone always checks on the people who live alone.</h1>
+      <p class="muted">Porchlight is a box by the door and the people behind it: nurses, home-care workers, family and neighbours. This demo plays back a real night, January 13, 2024, when Calgary hit −30 and Alberta's grid nearly ran out.</p>
       <ol>
-        <li><b>The box</b> on the left is Margaret's home. It has two buttons: I'm OK and Help.</li>
-        <li><b>The map</b> shows five neighbours across Calgary.</li>
-        <li><b>The phone</b> on the right is a volunteer. When someone doesn't answer, their phone gets asked.</li>
+        <li><b>The box</b> on the left is Margaret's home: I'm OK and Help.</li>
+        <li><b>The map</b> is Calgary. Click any home to see how they are, or ask for a check-in.</li>
+        <li><b>The phone</b> on the right is a caregiver's. When someone doesn't answer, their phone gets asked.</li>
       </ol>
       <p class="muted small">The bar under the clock always tells you what's happening and what to try next.</p>
       <div class="actions">
-        <button class="btn primary" onclick="begin()">Play January 13, 2024</button>
+        <button class="btn primary" onclick="begin()">Play the January 13 night</button>
         <button class="btn" onclick="closeIntro()">Look around first</button>
       </div>
     </div>
@@ -228,6 +248,7 @@
   <script src="api.js"></script>
   <script src="nav.js"></script>
   <script src="patterns.js"></script>
+  <script src="vendor/leaflet/leaflet.js"></script>
   <script src="demo.js"></script>
 </body>
 </html>
