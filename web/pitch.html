@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Porchlight · Pitch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="mark.svg" type="image/svg+xml">
+  <style>
+    body { overflow: hidden; }
+    .deck { position: relative; height: calc(100vh - 3.6rem); }
+    .slide { position: absolute; inset: 0; display: grid; align-content: center; padding: 3rem 8vw 5rem; gap: 1.2rem;
+             opacity: 0; visibility: hidden; transform: translateY(14px); transition: opacity .35s ease, transform .45s cubic-bezier(.2,.8,.2,1), visibility 0s .35s; }
+    .slide.on { opacity: 1; visibility: visible; transform: none; transition: opacity .35s ease, transform .45s cubic-bezier(.2,.8,.2,1); }
+    .slide h1 { font-size: clamp(2.4rem, 5.6vw, 4.6rem); line-height: 1.02; max-width: 20ch; }
+    .slide h2 { font-size: clamp(1.9rem, 4vw, 3.2rem); line-height: 1.05; max-width: 22ch; }
+    .slide p { font-size: clamp(1.1rem, 1.7vw, 1.45rem); max-width: 44ch; color: var(--muted); margin: 0; }
+    .slide .big { font-family: var(--display); font-weight: 800; color: var(--amber); font-size: clamp(3rem, 8vw, 6.5rem); letter-spacing: -0.04em; line-height: 1; }
+    .title { justify-items: start; }
+    .title .lockup { display: flex; align-items: center; gap: 1.4rem; }
+    .title .lockup img { width: clamp(5rem, 9vw, 7.5rem); height: auto; border-radius: 26px; box-shadow: 0 0 6rem -0.6rem var(--amber-glow); }
+    .title .wordmark { font-size: clamp(3.2rem, 8vw, 6.5rem); }
+    .title .slogan { font-size: clamp(1.3rem, 2.4vw, 2rem); }
+    .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.1rem; max-width: 70rem; }
+    .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 1.3rem 1.4rem; }
+    .tile b { font-family: var(--display); font-size: clamp(1.8rem, 3.2vw, 2.6rem); color: var(--amber); display: block; letter-spacing: -0.03em; }
+    .tile span { color: var(--muted); font-size: 1.05rem; }
+    .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 0.7rem; max-width: 74rem; }
+    .flow .node { background: var(--panel); border: 1px solid var(--line-2); border-radius: 14px; padding: 0.9rem 1.1rem; font-weight: 700; font-size: 1.1rem; }
+    .flow .node small { display: block; color: var(--muted); font-weight: 400; font-size: 0.9rem; }
+    .flow .node.hot { border-color: var(--amber); box-shadow: 0 0 1.6rem -0.5rem var(--amber-glow); }
+    .flow .node.ok { border-color: var(--mint); }
+    .flow i { color: var(--faint); font-style: normal; font-size: 1.4rem; }
+    .alert { display: inline-flex; gap: 0.8rem; align-items: center; background: #2a1118; border: 1px solid var(--coral); color: #ffd3db;
+             border-radius: 14px; padding: 0.8rem 1.1rem; font-weight: 700; max-width: 40rem; }
+    .alert::before { content: "!"; display: grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 50%; background: var(--coral); color: var(--ink); font-weight: 800; flex: none; }
+    .ticks { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.6rem; font-size: clamp(1.05rem, 1.6vw, 1.3rem); max-width: 54rem; }
+    .ticks li::before { content: "✓"; color: var(--mint); font-weight: 800; margin-right: 0.7rem; }
+    .controls { position: fixed; bottom: 1.2rem; left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 0.8rem; }
+    .dots { display: flex; gap: 0.4rem; }
+    .dots button { width: 0.7rem; height: 0.7rem; padding: 0; border-radius: 50%; border: none; background: var(--line-2); }
+    .dots button[aria-current="true"] { background: var(--amber); box-shadow: 0 0 0.6rem var(--amber-glow); width: 1.6rem; border-radius: 99px; }
+    .hint { position: fixed; right: 1.2rem; bottom: 1.4rem; }
+    @media (prefers-reduced-motion: reduce) { .slide, .slide.on { transition: none; transform: none; } }
+    @media (max-width: 760px) { body { overflow: auto; } .row { grid-template-columns: 1fr; } .hint { display: none; } }
+  </style>
+</head>
+<body>
+  <nav id="nav"></nav>
+  <main class="deck" id="main" aria-roledescription="carousel" aria-label="Porchlight pitch">
+
+    <section class="slide title" aria-roledescription="slide" aria-label="1 of 6">
+      <div class="lockup"><img src="mark.svg" alt="" width="120" height="120">
+        <div><div class="wordmark" aria-hidden="true">porchl<span class="i">i</span>ght</div><span class="sr-only">Porchlight</span>
+        <div class="slogan">A light left on for every neighbour.</div></div></div>
+      <p>Team 1st Place Inshallah · Hack the Change 2026 · Calgary</p>
+    </section>
+
+    <section class="slide" aria-roledescription="slide" aria-label="2 of 6">
+      <div class="eyebrow">Saturday, January 13, 2024 · 6:44 PM · −31 °C in Calgary</div>
+      <div class="alert">Every phone in Alberta: please cut your electricity use now.</div>
+      <h2>An alert on your phone doesn't knock on anyone's door.</h2>
+      <div class="row">
+        <div class="tile"><b>177,405</b><span>Calgarians aged 65 or older</span></div>
+        <div class="tile"><b>22%</b><span>of them in the Calgary area live alone</span></div>
+        <div class="tile"><b>−31 °C</b><span>at Calgary airport by 7 PM, wind chill −40</span></div>
+      </div>
+    </section>
+
+    <section class="slide" aria-roledescription="slide" aria-label="3 of 6">
+      <div class="eyebrow">The idea</div>
+      <h2>A box by the door with two buttons, and a neighbour behind it.</h2>
+      <div class="flow" role="list">
+        <div class="node" role="listitem">Grid on alert<small>AESO, live</small></div><i aria-hidden="true">+</i>
+        <div class="node" role="listitem">−25 °C or colder<small>Environment Canada</small></div><i aria-hidden="true">→</i>
+        <div class="node hot" role="listitem">Every box asks<small>"Are you OK?"</small></div><i aria-hidden="true">→</i>
+        <div class="node" role="listitem">No answer in 30 min<small>or a Help press</small></div><i aria-hidden="true">→</i>
+        <div class="node" role="listitem">A volunteer is asked<small>in their language</small></div><i aria-hidden="true">→</i>
+        <div class="node ok" role="listitem">"I'm with them"<small>the box shows who's coming</small></div>
+      </div>
+      <p>No one answers? It moves to the next volunteer, then the community coordinator. Someone always owns the call.</p>
+    </section>
+
+    <section class="slide" aria-roledescription="slide" aria-label="4 of 6">
+      <div class="eyebrow">Live demo</div>
+      <h2>Let's replay that night, minute by minute, from the grid operator's own records.</h2>
+      <p>The real box is on the table. The screen shows the same thing for anyone watching online.</p>
+      <div><a class="btn primary" href="/" style="font-size:1.15rem;padding:0.8rem 1.4rem">Open the replay</a></div>
+    </section>
+
+    <section class="slide" aria-roledescription="slide" aria-label="5 of 6">
+      <div class="eyebrow">Why it works</div>
+      <h2>Real data, simple rules, people already on the street.</h2>
+      <ul class="ticks">
+        <li>Grid data from AESO, temperatures from Environment Canada, and the official report on January 13. Nothing made up.</li>
+        <li>Rules a person can read: the AI only writes the words, never decides who to ask.</li>
+        <li>No camera, no microphone. The AI never sees an address or a phone number.</li>
+        <li>Two big buttons at home; bigger text, high contrast and four languages for volunteers.</li>
+        <li>About US$59 a box and US$5 a month for a whole community, run by the 150+ community associations Calgary already has.</li>
+      </ul>
+    </section>
+
+    <section class="slide" aria-roledescription="slide" aria-label="6 of 6">
+      <div class="lockup" style="display:flex;align-items:center;gap:1rem"><img src="mark.svg" alt="" width="72" height="72" style="border-radius:18px">
+        <div class="slogan" style="font-size:clamp(1.3rem,2.4vw,2rem)">A light left on for every neighbour.</div></div>
+      <h2>Next: one community association, one winter.</h2>
+      <p>Built with Arduino UNO Q, FastAPI, Tiger Data, Gemini, Auth0 and Vultr. Thank you. We'd love your questions.</p>
+      <div><a class="btn" href="about.html">How it works, with sources</a></div>
+    </section>
+  </main>
+
+  <div class="controls">
+    <button class="btn" id="prev" aria-label="Previous slide">←</button>
+    <div class="dots" id="dots"></div>
+    <button class="btn" id="next" aria-label="Next slide">→</button>
+  </div>
+  <div class="hint small muted">← → to move · F for full screen</div>
+  <div class="sr-only" aria-live="polite" id="said"></div>
+
+  <script src="nav.js"></script>
+  <script>
+    renderNav();
+    const slides = [...document.querySelectorAll(".slide")];
+    const dots = document.getElementById("dots");
+    slides.forEach((_, i) => {
+      const b = document.createElement("button");
+      b.setAttribute("aria-label", `Slide ${i + 1}`);
+      b.onclick = () => go(i);
+      dots.appendChild(b);
+    });
+    let at = 0;
+    function go(i) {
+      at = Math.max(0, Math.min(slides.length - 1, i));
+      slides.forEach((s, j) => { s.classList.toggle("on", j === at); s.inert = j !== at; });
+      [...dots.children].forEach((d, j) => d.setAttribute("aria-current", j === at));
+      document.getElementById("said").textContent = `Slide ${at + 1} of ${slides.length}`;
+      history.replaceState(null, "", "#" + (at + 1));
+    }
+    document.getElementById("prev").onclick = () => go(at - 1);
+    document.getElementById("next").onclick = () => go(at + 1);
+    addEventListener("keydown", e => {
+      if (e.target.closest("input, textarea")) return;
+      if (["ArrowRight", "PageDown", " "].includes(e.key)) { e.preventDefault(); go(at + 1); }
+      if (["ArrowLeft", "PageUp"].includes(e.key)) { e.preventDefault(); go(at - 1); }
+      if (e.key === "Home") go(0);
+      if (e.key === "End") go(slides.length - 1);
+      if (e.key === "f" || e.key === "F") document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.();
+    });
+    go((parseInt(location.hash.slice(1)) || 1) - 1);
+  </script>
+</body>
+</html>
