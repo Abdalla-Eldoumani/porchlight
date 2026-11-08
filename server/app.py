@@ -527,7 +527,7 @@ def box(rid):
         if not a.ack_by:
             text = "Help requested; awaiting a caregiver response"
     elif check and check["status"] == "pending" and not engine.current_alert(rid):
-        display, text = "ask", "Caregiver check-in: double press for I'm OK"
+        display, text = "ask", "A caregiver is checking in. Press I'm OK."
     return {"display": display, "text": text, "buzz": s.buzz,
             "buzz_pattern": s.buzz_pattern, "help_status": help_status, "manual_check": check}
 
