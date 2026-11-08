@@ -197,7 +197,12 @@ async function refresh() {
   document.querySelectorAll("#speeds button").forEach(b => b.setAttribute("aria-pressed", S.mode === "replay" && Number(b.dataset.speed) === S.speed));
   const me = S.residents.find(r => r.id === "margaret");
   drawBox(me.box);
-  $("online").innerHTML = me.box_online ? '<span class="chip on">Real box connected</span>' : 'On-screen copy of the box. The real one uses the same API.';
+  // With the real box online the screen mirrors it and its buttons are the only way to press.
+  $("box").classList.toggle("live", me.box_online);
+  $("boxmode").textContent = me.box_online ? "● Real box, live" : "Simulator";
+  $("boxmode").classList.toggle("live", me.box_online);
+  $("online").textContent = me.box_online ? "This mirrors the box by the door. Press its button: once for Help, twice for I'm OK."
+    : "No real box connected, so you can press for Margaret here.";
   city.update(S.residents);
   const ok = S.residents.filter(r => r.status === "ok").length;
   $("answered").textContent = `${ok} of ${S.residents.length} OK`;

@@ -48,6 +48,8 @@
     .legend { display: flex; gap: 1.1rem; flex-wrap: wrap; margin-top: 0.6rem; font-size: 0.8rem; }
     .motion { margin-top: 0.8rem; width: 100%; background: transparent; border: 1px dashed #9a8a6e; border-radius: 6px; padding: 0.45rem; color: #4a3c28; font-weight: 700; font-size: 0.85rem; }
     .online { margin-top: 0.7rem; font-size: 0.8rem; color: var(--muted); }
+    .boxbody.live .presses, .boxbody.live .motion { display: none; }
+    #boxmode.live { color: var(--ok); font-weight: 700; }
 
     .phone { background: #050608; border: 1px solid var(--rule-2); border-radius: 30px; padding: 0.7rem; }
     .phone .screen2 { background: var(--ink); border-radius: 22px; min-height: 540px; padding: 0.9rem 0.8rem; overflow: hidden; }
@@ -137,7 +139,7 @@
 
     <section class="stage">
       <div>
-        <div class="col-title"><h2>Margaret's box</h2><span>Forest Lawn</span></div>
+        <div class="col-title"><h2>Margaret's box</h2><span id="boxmode">Simulator</span></div>
         <div class="boxbody" id="box">
           <div class="screen">
             <div class="matrix" id="matrix" aria-hidden="true"></div>

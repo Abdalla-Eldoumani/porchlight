@@ -102,6 +102,10 @@
       <div class="row"><input type="password" id="PORCHLIGHT_LINK_SECRET" autocomplete="off"><button class="btn ghost reveal" data-for="PORCHLIGHT_LINK_SECRET">Show</button><button class="btn gen" data-for="PORCHLIGHT_LINK_SECRET">Make one</button></div>
       <div class="now" data-now="PORCHLIGHT_LINK_SECRET"></div>
       <p class="steps" style="padding-left:0">With a box key set, the on-screen box page needs <code>?key=…</code> in its address. The demo screen keeps working without it.</p>
+      <h3 style="margin:1.2rem 0 0.4rem">Connect the box</h3>
+      <p class="why">In Arduino App Lab, put this in <code>device_config.json</code> beside <code>main.py</code>, then press Run. Put the laptop and the box on the same phone hotspot: campus Wi-Fi blocks devices from reaching each other. Start the server with <code>--host 0.0.0.0</code>.</p>
+      <pre id="boxcfg" style="background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:0.8rem;overflow:auto;font:0.85rem var(--mono)">Loading…</pre>
+      <div class="row"><button class="btn" id="copycfg">Copy</button><span id="boxseen" class="small" role="status"></span></div>
     </section>
   </main>
 
@@ -200,6 +204,18 @@
       renderNav();
     });
     renderNav(); load();
+    async function boxSetup() {
+      try {
+        const r = await fetch("/api/box-setup", { headers: { "X-Setup-Code": ($("code") && $("code").value) || "" } });
+        if (!r.ok) { document.getElementById("boxcfg").textContent = "Open this page on the laptop running the server to see the box settings."; return; }
+        const b = await r.json();
+        document.getElementById("boxcfg").textContent = JSON.stringify(b.config, null, 2);
+        const t = b.last_seen_seconds;
+        document.getElementById("boxseen").textContent = t == null ? "The box hasn't called in yet." : t < 10 ? "✓ The box is connected." : `Last heard from the box ${Math.round(t)} s ago.`;
+      } catch { /* server restarting */ }
+    }
+    document.getElementById("copycfg").addEventListener("click", () => navigator.clipboard.writeText(document.getElementById("boxcfg").textContent));
+    boxSetup(); setInterval(boxSetup, 2000);
   </script>
 </body>
 </html>

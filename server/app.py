@@ -404,6 +404,27 @@ async def setup_save(values: dict = Body(embed=True), remember: bool = Body(Fals
     return {"store": store.kind, "store_error": store_error, "fields": setup_fields()}
 
 
+def lan_address():
+    """This computer's address on the local network, which the box needs (localhost on the board means the board)."""
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        try:
+            s.connect(("8.8.8.8", 80))   # UDP connect sends nothing; it only picks the outgoing interface
+            return s.getsockname()[0]
+        except OSError:
+            return None
+
+
+@app.get("/api/box-setup", dependencies=[Depends(setup_access)])
+async def box_setup(request: Request):
+    """Everything the box's device_config.json needs, plus when the box last called in."""
+    ip, port = lan_address(), request.url.port or 8000
+    seen = last_poll.get("margaret")
+    return {"config": {"server": f"http://{ip}:{port}" if ip else None, "resident": "margaret",
+                       "key": settings.get("PORCHLIGHT_DEVICE_KEY") or ""},
+            "last_seen_seconds": None if seen is None else round(_time.monotonic() - seen, 1)}
+
+
 @app.post("/api/setup/test/{service}", dependencies=[Depends(setup_access)])
 async def setup_test(service: str, values: dict = Body(default={}, embed=True)):
     """Try a service with the value typed in the form (or the saved one)."""

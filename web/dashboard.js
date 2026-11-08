@@ -94,8 +94,25 @@ function choose(id) { selected = id; pickedByHand = Date.now(); personKey = ""; 
 // ---- the whole screen ------------------------------------------------------------
 function stat(label, value, cls) { return el("div", { class: "cond" }, el("b", { class: cls || "" }, value), el("span", {}, label)); }
 
+// A toast and the tab title flag every new Help press, wherever the caregiver is looking.
+let knownHelp = null;
+function announce(s) {
+  const help = s.residents.filter(p => p.status === "help" && p.alert);
+  const ids = new Set(help.map(p => p.alert.id));
+  if (knownHelp) help.filter(p => !knownHelp.has(p.alert.id)).forEach(p => {
+    const t = el("div", { class: "toast", role: "alert" }, el("b", {}, `${p.name} pressed Help`),
+      el("span", {}, `${p.community} · ${p.simulated ? "simulated" : "real box"}`),
+      el("button", { class: "btn primary", onclick: () => { choose(p.id); t.remove(); } }, "Open"));
+    $("toasts").append(t);
+    setTimeout(() => t.remove(), 20000);
+  });
+  knownHelp = ids;
+  document.title = (help.length ? `(${help.length}) Help · ` : "") + "Porchlight · Caregivers";
+}
+
 function render(s) {
   S = s;
+  announce(s);
   $("clock").textContent = s.clock;
   $("mode").textContent = s.mode === "replay" ? `REPLAY · ${s.speed ? s.speed + "×" : "PAUSED"}` : "LIVE";
   const c = s.conditions;
