@@ -1,0 +1,128 @@
+/* Porchlight: Calgary at night, cold blue ink, and one warm light per home.
+   Amber is the porch light; mint means OK, coral means someone needs help. */
+:root {
+  --ink: #090d18;
+  --ink-2: #0f1526;
+  --panel: #131a2d;
+  --panel-2: #1a2339;
+  --line: #26304b;
+  --line-2: #34405f;
+  --text: #f1f3f9;
+  --muted: #95a0bb;
+  --faint: #5f6a87;
+  --amber: #ffb547;
+  --amber-glow: rgba(255, 181, 71, 0.45);
+  --mint: #3fe0a2;
+  --coral: #ff5d78;
+  --sky: #63c6ff;
+  --watch: #ff9a4d;
+  --ok: var(--mint);
+  --alert: var(--coral);
+  --help: var(--coral);
+  --radius: 10px;
+  --display: "Bricolage Grotesque", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+html { font-size: 106.25%; }               /* 17px: readable on a projector */
+body { margin: 0; background: var(--ink); color: var(--text); font-family: var(--body); line-height: 1.45;
+       font-variant-numeric: tabular-nums; }
+h1, h2, h3 { font-family: var(--display); font-weight: 800; letter-spacing: -0.02em; margin: 0; }
+a { color: var(--amber); }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; border-radius: 4px; }
+.muted { color: var(--muted); }
+.small { font-size: 0.82rem; }
+.eyebrow { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* ---- top navigation ---- */
+.nav { display: flex; align-items: center; gap: 1.5rem; padding: 0.75rem 1.5rem; border-bottom: 1px solid var(--line);
+       background: rgba(9, 13, 24, 0.85); backdrop-filter: blur(8px); position: sticky; top: 0; z-index: 20; }
+.brand { display: flex; align-items: center; gap: 0.5rem; text-decoration: none; color: var(--text); border-radius: 8px; }
+.brand .mark { width: 1.85rem; height: 1.85rem; display: block; }
+.brand:hover .wordmark .i::after { box-shadow: 0 0 0.9rem 0.35rem var(--amber-glow); }
+/* Wordmark: lowercase, tight, and the i is dotted with the porch light itself. */
+.wordmark { font-family: var(--display); font-weight: 800; font-size: 1.3rem; letter-spacing: -0.035em; line-height: 1; }
+.wordmark.big { font-size: 2.4rem; }
+.wordmark .i { position: relative; }
+/* Sits exactly over the i's own dot (measured in Bricolage 800: centre 0.1125em in, 0.295em down). */
+.wordmark .i::after { content: ""; position: absolute; left: 0.1125em; top: 0.295em; width: 0.21em; height: 0.21em; transform: translate(-50%, -50%);
+  border-radius: 50%; background: var(--amber); box-shadow: 0 0 0.55rem 0.15rem var(--amber-glow); transition: box-shadow .3s; }
+.slogan { font-family: var(--display); font-weight: 600; color: var(--amber); font-size: 1.02rem; margin-top: 0.3rem; }
+.introbrand { display: flex; align-items: center; gap: 0.9rem; margin-bottom: 1.1rem; }
+.introbrand img { border-radius: 14px; box-shadow: 0 0 2.5rem -0.4rem var(--amber-glow); }
+.skip { position: absolute; left: 0.75rem; top: -3rem; background: var(--amber); color: var(--ink); padding: 0.45rem 0.8rem; border-radius: 8px; font-weight: 700; z-index: 50; }
+.skip:focus { top: 0.6rem; }
+.reading { border: 1px solid var(--line-2); background: transparent; border-radius: 8px; padding: 0.2rem 0.5rem; font-weight: 800; font-size: 0.8rem; color: var(--muted); line-height: 1.2; }
+.reading { display: inline-flex; align-items: center; min-height: 1.9rem; }
+.reading > span > span { font-size: 1.05rem; }
+.reading[aria-pressed="true"] { color: var(--ink); background: var(--amber); border-color: var(--amber); }
+/* Reading settings, chosen by the person and remembered in this browser. */
+html.big-text { font-size: 125%; }
+html.contrast { --text: #ffffff; --muted: #d6dcea; --faint: #aab3c8; --line: #8592b3; --line-2: #b8c2dc; --panel: #000; --panel-2: #0a0a0a; --ink: #000; --ink-2: #000; }
+html.contrast .muted { color: var(--muted); }
+.nav .links { display: flex; gap: 0.25rem; }
+.nav .links a { color: var(--muted); text-decoration: none; padding: 0.35rem 0.75rem; border-radius: 99px; font-weight: 700; font-size: 0.9rem; }
+.nav .links a:hover { color: var(--text); }
+.nav .links a[aria-current="page"] { color: var(--ink); background: var(--amber); }
+.nav .right { margin-left: auto; display: flex; gap: 0.5rem; align-items: center; }
+
+.topbar { display: flex; justify-content: space-between; align-items: center; gap: 0.7rem; padding: 0.8rem 1.5rem; border-bottom: 1px solid var(--line); }
+
+/* ---- small parts ---- */
+.btn { background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 8px; padding: 0.5rem 0.9rem; font-weight: 700; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--amber); color: #1d1405; border-color: var(--amber); }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn.ghost { background: transparent; }
+.btn[aria-pressed="true"] { border-color: var(--amber); color: var(--amber); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.chip { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.74rem; font-weight: 700; padding: 0.18rem 0.6rem;
+        border-radius: 99px; border: 1px solid var(--line-2); color: var(--muted); white-space: nowrap; text-decoration: none; }
+.chip::before { content: ""; width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--faint); }
+.chip.on { color: var(--text); }
+.chip.on::before { background: var(--mint); box-shadow: 0 0 0.4rem var(--mint); }
+.chip.bad::before { background: var(--coral); }
+.banner { background: #2a2011; color: var(--amber); padding: 0.45rem 1.5rem; font-size: 0.85rem; }
+
+/* status words always carry a symbol, never colour alone */
+.status { display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 700; }
+.status::before { font-family: system-ui; }
+.status.ok { color: var(--mint); }       .status.ok::before { content: "✓"; }
+.status.asked { color: var(--amber); }   .status.asked::before { content: "?"; }
+.status.waiting { color: var(--muted); } .status.waiting::before { content: "…"; }
+.status.alert { color: var(--coral); }   .status.alert::before { content: "!"; }
+.status.help { color: var(--coral); }    .status.help::before { content: "!!"; }
+.status.visitor { color: var(--amber); } .status.visitor::before { content: "♥"; }
+
+.level { font-weight: 800; }
+.level.normal { color: var(--mint); }
+.level.watch { color: var(--watch); }
+.level.alert, .level.emergency { color: var(--coral); }
+
+/* ---- the box (used on the demo screen and the box page) ---- */
+.boxbody { background: linear-gradient(180deg, #efe4cf, #e2d3b8); color: #2b2116; border-radius: 22px; padding: 1.2rem;
+           box-shadow: 0 1.4rem 2.8rem rgba(0, 0, 0, 0.5), inset 0 -6px 0 rgba(0, 0, 0, 0.12); }
+.boxbody.buzz { animation: buzz 0.08s linear 9; }
+@keyframes buzz { 25% { transform: translate(-3px, 1px) rotate(-0.4deg); } 75% { transform: translate(3px, -1px) rotate(0.4deg); } }
+.screen { background: #0c0f15; border-radius: 12px; padding: 0.9rem; }
+.matrix { display: grid; grid-template-columns: repeat(13, 1fr); gap: 3px; }
+.matrix i { aspect-ratio: 1; border-radius: 50%; background: #1d222c; transition: background 0.15s; }
+.matrix i.on { background: var(--amber); box-shadow: 0 0 6px 1px var(--amber-glow); }
+.screen .line { min-height: 2.4rem; margin-top: 0.7rem; color: var(--text); font-size: 1.05rem; text-align: center; font-weight: 700; }
+.presses { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.1rem; }
+.press { border: none; border-radius: 50%; aspect-ratio: 1; font-family: var(--display); font-weight: 800; font-size: 1.35rem;
+         box-shadow: 0 7px 0 rgba(0, 0, 0, 0.35); transition: transform 0.06s, box-shadow 0.06s; }
+.press:active { transform: translateY(5px); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); }
+.press.ok { background: #2fa767; color: #fff; }
+.press.help { background: #d83a4f; color: #fff; }
+.press.nudge { animation: nudge 1.4s ease-in-out infinite; }
+@keyframes nudge { 50% { box-shadow: 0 7px 0 rgba(0, 0, 0, 0.35), 0 0 0 10px rgba(255, 181, 71, 0.45); } }
+
+@media (max-width: 760px) { .nav { gap: 0.8rem; padding: 0.6rem 1rem; flex-wrap: wrap; } .nav .chips { display: none; } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+.topright { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; }
+#reading { display: inline-flex; gap: 0.4rem; }
