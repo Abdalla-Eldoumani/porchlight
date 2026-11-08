@@ -146,6 +146,12 @@ void activity(unsigned long now) {
   greenAt = now;
 }
 
+void report_ok(unsigned long now) {
+  pending |= 1;
+  activity(now);
+  show(OK);
+}
+
 void setup() {
   pinMode(PIN_BUTTON, INPUT_PULLUP);
   pinMode(PIN_PIR, INPUT);
@@ -177,11 +183,9 @@ void loop() {
     if (button == LOW) {
       if (waitingSecond && now - firstPressAt <= DOUBLE_PRESS_MS) {
         waitingSecond = false;
-        pending |= 1;           // double press produces OK only
-        activity(now);
-        show(OK);
+        request_help();         // a double press asks for help
       } else {
-        if (waitingSecond) request_help();
+        if (waitingSecond) report_ok(now);
         waitingSecond = true;
         firstPressAt = now;
       }
@@ -189,7 +193,7 @@ void loop() {
   }
   if (waitingSecond && now - firstPressAt >= DOUBLE_PRESS_MS) {
     waitingSecond = false;
-    request_help();              // single press waits for the double-press window
+    report_ok(now);              // a single press is I'm OK, once the double-press window has passed
   }
 
   int pir = digitalRead(PIN_PIR);
