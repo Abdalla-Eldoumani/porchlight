@@ -56,7 +56,7 @@ void tap() {
   pins[3]=LOW; loop(); advance(31);
   pins[3]=HIGH; loop(); advance(31);
 }
-void help() { tap(); advance(601); assert(read_inputs()==2); }
+void help() { tap(); advance(100); tap(); assert(read_inputs()==2); }
 void motor(bool on) {
 #if PORCHLIGHT_MOTOR_ENABLED
   assert(pins[5]==(on?HIGH:LOW));
@@ -75,14 +75,13 @@ int main(int argc,char **argv) {
   std::string scenario=argv[1];
   if(scenario=="single") {
     tap(); advance(500); assert(read_inputs()==0);
-    advance(101); assert(read_inputs()==2);
-    assert(pins[9]==HIGH && pins[8]==LOW);
+    advance(101); assert(read_inputs()==1);
+    assert(pins[8]==HIGH && pins[9]==LOW);
     advance(1000); assert(read_inputs()==0);
   } else if(scenario=="double") {
     tap(); advance(100); tap();
-    assert(read_inputs()==1 && pins[8]==HIGH && pins[9]==LOW);
+    assert(read_inputs()==2 && pins[9]==HIGH && pins[8]==LOW);
     advance(601); assert(read_inputs()==0);
-    advance(5000); assert(pins[8]==LOW);
   } else if(scenario=="bounce") {
     pins[3]=LOW; loop(); advance(4);
     pins[3]=HIGH; loop(); advance(4);
@@ -90,7 +89,7 @@ int main(int argc,char **argv) {
     pins[3]=HIGH; loop(); advance(4);
     pins[3]=LOW; loop(); advance(4);
     pins[3]=HIGH; loop(); advance(31);
-    advance(601); assert(read_inputs()==2);
+    advance(601); assert(read_inputs()==1);
     advance(1000); assert(read_inputs()==0);
   } else if(scenario=="motion") {
     pins[2]=HIGH; loop(); assert(read_inputs()==4 && pins[8]==HIGH);
@@ -102,7 +101,7 @@ int main(int argc,char **argv) {
   } else if(scenario=="priority") {
     help(); help_state(1|4);
     pins[2]=HIGH; loop(); assert(read_inputs()==4 && pins[8]==LOW);
-    tap(); advance(100); tap(); assert(read_inputs()==1);
+    tap(); advance(601); assert(read_inputs()==1);   // I'm OK never clears a Help
     assert(pins[9]==HIGH && pins[8]==LOW);
     assert(matrix.last==FRAMES[HELP]);
     help_state(2); loop(); assert(pins[9]==HIGH);
@@ -136,10 +135,10 @@ int main(int argc,char **argv) {
     advance(550); assert(vibrationLength==0); motor(false);
   } else if(scenario=="held") {
     pins[3]=LOW; loop(); advance(31); advance(601);
-    assert(read_inputs()==2); advance(3000); assert(read_inputs()==0);
+    assert(read_inputs()==1); advance(3000); assert(read_inputs()==0);
   } else if(scenario=="rollover") {
     nowMs=ULONG_MAX-300;
-    tap(); advance(100); tap(); assert(read_inputs()==1);
+    tap(); advance(100); tap(); assert(read_inputs()==2);
     advance(6000); assert(read_inputs()==0 && pins[8]==LOW);
   } else { assert(false); }
 }
