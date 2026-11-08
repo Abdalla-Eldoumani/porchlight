@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Porchlight · Coordinator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="mark.svg" type="image/svg+xml">
+  <script src="https://cdn.jsdelivr.net/npm/@auth0/auth0-spa-js@2.30.0/dist/auth0-spa-js.production.js"></script>
+  <style>
+    h2 { font-family: var(--body); font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.13em; margin-bottom: 0.8rem; }
+    .now { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1.2rem 2rem; align-items: end; padding: 1.4rem 1.5rem; border-bottom: 1px solid var(--line); }
+    .now .stats { order: 3; flex-basis: 100%; }
+    .clock { font-family: var(--display); font-size: 2rem; line-height: 1.1; }
+    .mode-label { font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--amber); }
+    .stats { display: flex; gap: 2.2rem; flex-wrap: wrap; }
+    .stat b { display: block; font-family: var(--display); font-size: 1.6rem; }
+    .stat span { color: var(--muted); font-size: 0.8rem; }
+    .controls { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: flex-end; }
+    main { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 1.5rem; padding: 1.5rem; }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } .controls { justify-content: flex-start; } }
+    .people { display: grid; gap: 0.7rem; }
+    .person { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 0.9rem 1rem; }
+    .person.help, .person.alert { background: #2a1420; border-color: rgba(255, 93, 120, 0.5); }
+    .person.visitor, .person.asked { background: #231d12; border-color: rgba(255, 181, 71, 0.4); }
+    .person header { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; }
+    .person h3 { font-size: 1.15rem; }
+    .tag { font-size: 0.72rem; border: 1px solid var(--line); border-radius: 99px; padding: 0.05rem 0.5rem; color: var(--muted); }
+    .msg { margin: 0.6rem 0 0; padding-left: 0.8rem; border-left: 2px solid var(--line); color: var(--text); }
+    .msg small { display: block; color: var(--muted); margin-top: 0.2rem; }
+    .row { display: flex; gap: 0.5rem; margin-top: 0.6rem; flex-wrap: wrap; }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 1rem; margin-bottom: 1.5rem; }
+    svg text { fill: var(--muted); font-size: 11px; font-family: var(--body); }
+    .feed { list-style: none; margin: 0; padding: 0; max-height: 22rem; overflow: auto; }
+    .feed li { padding: 0.45rem 0; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 5.2rem 1fr; gap: 0.6rem; }
+    .feed time { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .feed .grid { color: var(--amber); }
+    .feed .alert, .feed .escalated { color: var(--alert); }
+    .trust { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; padding: 0 1.5rem 2rem; }
+    @media (max-width: 900px) { .trust { grid-template-columns: 1fr; } }
+    .trust ul { margin: 0; padding-left: 1.1rem; }
+    #signin { display: none; padding: 4rem 1.5rem; text-align: center; }
+    .banner { background: #2b2414; color: var(--amber); padding: 0.4rem 1.5rem; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <nav id="nav"></nav>
+  <div id="banner"></div>
+
+  <section id="signin">
+    <h1>Coordinator sign-in</h1>
+    <p class="muted">Only coordinators can see residents' status.</p>
+    <button class="btn primary" onclick="signIn()">Sign in</button>
+  </section>
+
+  <div id="app" hidden>
+    <section class="now" aria-label="Right now">
+      <div>
+        <div class="mode-label" id="mode"></div>
+        <div class="clock" id="clock"></div>
+      </div>
+      <div class="stats" id="stats"></div>
+      <div class="controls"><span id="who" class="small muted" style="align-self:center"></span>
+        <button class="btn" onclick="setMode('replay', 30)">Replay Jan 13, 2024</button>
+        <button class="btn speed" data-speed="0" onclick="setSpeed(0)">Pause</button>
+        <button class="btn speed" data-speed="30" onclick="setSpeed(30)">30×</button>
+        <button class="btn speed" data-speed="60" onclick="setSpeed(60)">60×</button>
+        <button class="btn speed" data-speed="120" onclick="setSpeed(120)">120×</button>
+        <button class="btn" onclick="setMode('live')">Live now</button>
+      </div>
+    </section>
+
+    <main id="main">
+      <section aria-labelledby="h-people">
+        <h2 id="h-people">Neighbours</h2>
+        <div class="people" id="people" aria-live="polite"></div>
+      </section>
+      <section>
+        <div class="panel">
+          <h2>The grid that day</h2>
+          <svg id="chart" viewBox="0 0 640 230" role="img" aria-label="Alberta electricity demand and pool price by hour"></svg>
+          <p class="small muted" id="chart-note"></p>
+        </div>
+        <div class="panel">
+          <h2>What happened</h2>
+          <ol class="feed" id="feed" aria-live="polite" reversed></ol>
+        </div>
+      </section>
+    </main>
+
+    <section class="trust" aria-label="Trust and transparency">
+      <div class="panel">
+        <h2>What Margaret's box sends</h2>
+        <p class="small muted">Only button presses and "someone moved". No camera, no microphone, no audio.</p>
+        <ul id="sent" class="small"></ul>
+      </div>
+      <div class="panel">
+        <h2>Who looked at what</h2>
+        <ul id="access" class="small"></ul>
+      </div>
+      <div class="panel">
+        <h2>Volunteer links</h2>
+        <ul id="links" class="small"></ul>
+        <p class="small muted">Volunteers don't need an account. The address only shows after they say they're going.</p>
+      </div>
+    </section>
+  </div>
+  <script src="api.js"></script>
+  <script src="nav.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>
