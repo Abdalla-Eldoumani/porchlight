@@ -1,8 +1,6 @@
 // The demo screen: Margaret's box, a map of Calgary, a volunteer's phone,
 // and one sentence saying what is happening now. Everything comes from the
 // same API the real box, the coordinator and volunteers use.
-const COLOR = { ok: "var(--mint)", asked: "var(--amber)", alert: "var(--coral)", help: "var(--coral)",
-                visitor: "var(--amber)", waiting: "var(--faint)" };
 const LEVEL = { normal: "Normal", watch: "Tight", alert: "Grid alert", emergency: "Emergency" };
 let S = null, links = [], picked = null, pickedByHand = 0, lastBoxBuzz = null, lastTaskCount = 0, chartDay = null, chart = null;
 
@@ -25,78 +23,11 @@ async function press(kind) {
   refresh();
 }
 
-// ---- the map ------------------------------------------------------------------
-// Real Calgary streets from OpenStreetMap, darkened with a CSS filter to match the page. Each home is a pin with a
-// symbol and a word for its status, so it never depends on colour alone.
-const SYMBOL = { ok: "✓", asked: "?", alert: "!", help: "!!", visitor: "♥", waiting: "…" };
-let map = null;
-const pins = {};
-function drawMap() {
-  map = L.map("map", { zoomControl: false, scrollWheelZoom: false, attributionControl: true });
-  L.control.zoom({ position: "bottomright" }).addTo(map);
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 18, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  }).addTo(map);
-  map.setView([51.06, -114.06], 11);
-  map.on("focus click", () => map.scrollWheelZoom.enable());
-  map.on("blur mouseout", () => map.scrollWheelZoom.disable());
-}
-// A label goes above its pin when another home sits just below it, so names don't overlap.
-function labelAbove(r) {
-  return S.residents.some(o => o !== r && o.lat < r.lat && r.lat - o.lat < 0.03 && Math.abs(o.lon - r.lon) < 0.05);
-}
-function shown(r) {
-  const c = r.box && r.box.manual_check;
-  if (r.status === "ok" && c && c.status === "pending") return "asked";
-  if (r.status === "ok" && c && c.status === "unanswered") return "alert";
-  return r.status;
-}
-function pinHTML(r) {
-  const st = shown(r), quiet = st === "ok" || st === "waiting";
-  return `<div class="pin ${st}${labelAbove(r) ? " above" : ""}"><span class="ring"></span><span class="dot">${SYMBOL[st] || ""}</span>
-    <span class="tag"><b>${r.name}</b>${quiet ? "" : `<small>${statusLabel(st)}</small>`}</span></div>`;
-}
-function statusLabel(st) {
-  return { ok: "OK", waiting: "not yet", asked: "asked", alert: "no answer", help: "Help", visitor: "someone's coming" }[st] || st;
-}
-function popupHTML(r) {
-  const c = r.box && r.box.manual_check;
-  const check = c && c.status === "pending" ? `<p class="pop-note">Check-in sent, ${Math.ceil(c.remaining_seconds / 60)} min left</p>`
-    : c && c.status === "confirmed" ? `<p class="pop-note ok">Answered the check-in</p>`
-    : c && c.status === "unanswered" ? `<p class="pop-note warn">No answer to the check-in</p>` : "";
-  return `<div class="pop"><h3>${r.name}</h3><p class="muted">${r.community} · ${r.simulated ? "simulated" : "real box"}</p>
-    <p class="status ${r.status}">${statusWords(r)}</p>
-    <p class="muted small">Last I'm OK: ${r.last_ok || "not yet"}${r.last_motion ? ` · moved ${r.last_motion}` : ""}</p>${check}
-    <button class="btn primary" ${c && c.status === "pending" ? "disabled" : ""} onclick="askCheckin('${r.id}')">Ask for a check-in</button></div>`;
-}
+// ---- the map (map.js) -----------------------------------------------------------
+let city = null;
 async function askCheckin(rid) {
   try { await api(`/api/residents/${rid}/check-in`, {}); } catch (e) { $("hint").textContent = "Couldn't send the check-in: " + e.message; }
   refresh();
-}
-function drawHomes(residents) {
-  if (!map) return;
-  const fresh = !Object.keys(pins).length;
-  residents.forEach(r => {
-    const html = pinHTML(r);
-    const icon = () => L.divIcon({ className: "", html, iconSize: [26, 26], iconAnchor: [13, 13], popupAnchor: [0, -14] });
-    let p = pins[r.id];
-    if (!p) {
-      p = pins[r.id] = L.marker([r.lat, r.lon], { icon: icon(), keyboard: true, title: `${r.name}, ${r.community}`, riseOnHover: true }).addTo(map);
-      p.bindPopup("", { className: "dark-pop", maxWidth: 260 });
-      p._html = html;
-    }
-    if (p._html !== html) { p._html = html; p.setIcon(icon()); }
-    p.setZIndexOffset(["help", "alert", "asked"].includes(shown(r)) ? 1000 : 0);
-    const pop = popupHTML(r);
-    if (p._pop !== pop) { p._pop = pop; p.setPopupContent(pop); }
-  });
-  if (fresh) map.fitBounds(L.latLngBounds(residents.map(r => [r.lat, r.lon])).pad(0.12));
-}
-function statusWords(r) {
-  const a = r.alert;
-  return { ok: `OK at ${r.last_ok}`, waiting: "not checked in yet", asked: "asked to press I'm OK",
-           help: `pressed Help, asking ${a && a.asking}`, alert: `no answer, asking ${a && a.asking}`,
-           visitor: `${a && a.going} is coming` }[r.status];
 }
 
 // ---- the phone ------------------------------------------------------------------
@@ -131,12 +62,13 @@ async function drawPhone() {
   const res = await fetch(`/api/v/${v.token}`);
   if (!res.ok) return;
   const data = await res.json();
+  data.tasks.sort((a, b) => (b.rule === "help") - (a.rule === "help"));   // a Help press always comes first
   const key = picked + data.tasks.map(t => `${t.id}:${t.mine}:${t.message ? 1 : 0}`).join(",");
   if (key === lastTaskKey) return;                     // don't redraw under a thumb
   if (data.tasks.length > lastTaskCount && lastTaskKey.startsWith(picked)) shake($("phone"));
   lastTaskKey = key; lastTaskCount = data.tasks.length;
   $("tasks").replaceChildren(...(data.tasks.length ? data.tasks.map(t => task(v, t))
-    : [el("div", { class: "empty" }, `Nothing for ${v.name} right now.`, el("br"), el("span", { class: "small" }, "Requests show up here."))]));
+    : [el("div", { class: "empty" }, el("b", {}, `Nothing for ${v.name} right now`), "When someone needs a visit, it shows up here.")]));
 }
 const eta = {};
 function task(v, t) {
@@ -218,19 +150,19 @@ async function drawChart(day) {
   const yA = v => T + (1 - (v - lo) / (hi - lo)) * (H - T - B), yP = v => T + (1 - v / 1000) * (H - T - B);
   const path = (key, y) => g.rows.map((r, i) => `${i ? "L" : "M"}${x(hourOf(r.time) + 0.5).toFixed(1)},${y(r[key]).toFixed(1)}`).join("");
   const parts = [];
-  for (let h = 0; h <= 24; h += 3) parts.push(`<line x1="${x(h)}" x2="${x(h)}" y1="${T}" y2="${H - B}" stroke="#202a43"/>${h < 24 ? `<text x="${x(h)}" y="${H - 6}" text-anchor="middle">${(h % 12 || 12) + (h < 12 ? "a" : "p")}</text>` : ""}`);
+  for (let h = 0; h <= 24; h += 3) parts.push(`<line x1="${x(h)}" x2="${x(h)}" y1="${T}" y2="${H - B}" stroke="#1c212b"/>${h < 24 ? `<text x="${x(h)}" y="${H - 6}" text-anchor="middle">${(h % 12 || 12) + (h < 12 ? "a" : "p")}</text>` : ""}`);
   if (g.rows.length) {
-    parts.push(`<path d="${path("price", yP)} L${x(24)},${yP(0)} L${x(0.5)},${yP(0)}Z" fill="rgba(99,198,255,0.08)"/>`);
-    parts.push(`<path d="${path("price", yP)}" fill="none" stroke="#63c6ff" stroke-width="1.6" stroke-opacity="0.7"/>`);
-    parts.push(`<path d="${path("ail_mw", yA)}" fill="none" stroke="#ffb547" stroke-width="3" stroke-linejoin="round"/>`);
+    parts.push(`<path d="${path("price", yP)} L${x(24)},${yP(0)} L${x(0.5)},${yP(0)}Z" fill="rgba(143,184,232,0.07)"/>`);
+    parts.push(`<path d="${path("price", yP)}" fill="none" stroke="#8fb8e8" stroke-width="1.6" stroke-opacity="0.7"/>`);
+    parts.push(`<path d="${path("ail_mw", yA)}" fill="none" stroke="#f2b544" stroke-width="3" stroke-linejoin="round"/>`);
     parts.push(`<text x="${L - 6}" y="${yA(hi - 150) + 4}" text-anchor="end">${Math.round((hi - 150) / 100) / 10}k MW</text>`);
     parts.push(`<text x="${W - R + 6}" y="${yP(1000) + 4}">$1000</text><text x="${W - R + 6}" y="${yP(0)}">$0</text>`);
   }
   g.events.forEach((e, i) => {
-    const ex = x(hourOf(e.time)), col = e.level === "emergency" ? "#ff5d78" : "#ff9a4d";
+    const ex = x(hourOf(e.time)), col = e.level === "emergency" ? "#ff7262" : "#f29a52";
     parts.push(`<g><title>${e.text}</title><line x1="${ex}" x2="${ex}" y1="${T}" y2="${H - B}" stroke="${col}" stroke-opacity="0.7"/></g>`);
   });
-  parts.push(`<rect id="past" x="${L}" y="${T}" height="${H - T - B}" width="0" fill="rgba(255,255,255,0.035)"/><line id="nowline" y1="${T - 4}" y2="${H - B}" stroke="#f1f3f9" stroke-width="2"/>`);
+  parts.push(`<rect id="past" x="${L}" y="${T}" height="${H - T - B}" width="0" fill="rgba(255,255,255,0.035)"/><line id="nowline" y1="${T - 4}" y2="${H - B}" stroke="#eceef2" stroke-width="2"/>`);
   svg.innerHTML = parts.join("");
   chart = { x, hourOf, L, events: g.events };
   $("chartnote").innerHTML = g.rows.length
@@ -256,7 +188,8 @@ function readings(c) {
 }
 
 async function refresh() {
-  try { S = await api("/api/state"); } catch (e) { $("narration").textContent = "Can't reach the server. Is it still running?"; return; }
+  try { S = await api("/api/state"); }
+  catch (e) { $("narration").textContent = e.message.startsWith("401") ? "The server didn't accept your sign-in: " + e.message : "Can't reach the server. Is it still running?"; return; }
   $("date").textContent = S.date;
   $("time").textContent = S.time;
   $("mode").textContent = S.mode === "replay" ? (S.speed ? `replay at ${S.speed}×` : "paused") : "live";
@@ -264,8 +197,8 @@ async function refresh() {
   document.querySelectorAll("#speeds button").forEach(b => b.setAttribute("aria-pressed", S.mode === "replay" && Number(b.dataset.speed) === S.speed));
   const me = S.residents.find(r => r.id === "margaret");
   drawBox(me.box);
-  $("online").innerHTML = me.box_online ? '<span class="chip on">Real box connected</span>' : '<span class="small muted">On-screen box. The real Arduino uses the same API.</span>';
-  drawHomes(S.residents);
+  $("online").innerHTML = me.box_online ? '<span class="chip on">Real box connected</span>' : 'On-screen copy of the box. The real one uses the same API.';
+  city.update(S.residents);
   const ok = S.residents.filter(r => r.status === "ok").length;
   $("answered").textContent = `${ok} of ${S.residents.length} OK`;
   story();
@@ -289,15 +222,23 @@ async function begin() { closeIntro(); await restart(); }
 
 document.querySelectorAll("#speeds button").forEach(b => b.addEventListener("click", () => setSpeed(Number(b.dataset.speed))));
 
+function showError(text, action) {
+  $("narration").textContent = text;
+  $("hint").replaceChildren(...(action ? [action] : []));
+}
+
 (async () => {
   renderNav();
-  const { cfg, signedIn } = await setupAuth();
-  if (!signedIn) { $("narration").textContent = "Sign in as a coordinator to run the demo."; $("hint").replaceChildren(el("button", { class: "btn primary", onclick: signIn }, "Sign in")); return; }
+  let signedIn;
+  try { ({ signedIn } = await setupAuth()); }
+  catch (e) { return showError("Sign-in didn't finish: " + e.message, el("button", { class: "btn primary", onclick: signIn }, "Sign in again")); }
+  if (!signedIn) return showError("Sign in as a caregiver to run the demo.", el("button", { class: "btn primary", onclick: signIn }, "Sign in"));
   let seen = false;
   try { seen = sessionStorage.getItem("porchlight-intro") === "1"; } catch {}
   $("intro").hidden = seen;
-  drawMap();
-  links = await api("/api/volunteer-links");
+  city = makeMap("map", { onAsk: askCheckin });
+  try { links = await api("/api/volunteer-links"); }
+  catch (e) { return showError("The server turned the request down: " + e.message, el("button", { class: "btn", onclick: signOut }, "Sign out")); }
   picked = links[0] && links[0].id;
   refresh();
   setInterval(refresh, 1000);
