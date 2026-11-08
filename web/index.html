@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Porchlight · Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="mark.svg" type="image/svg+xml">
+  <script src="https://cdn.jsdelivr.net/npm/@auth0/auth0-spa-js@2.30.0/dist/auth0-spa-js.production.js"></script>
+  <style>
+    body { background: radial-gradient(120% 70% at 50% -10%, #17213d 0%, var(--ink) 60%); min-height: 100vh; }
+    .wrap { max-width: 1480px; margin: 0 auto; padding: 0 1.5rem 2rem; }
+
+    /* the moment: date, time, cold, grid */
+    .moment { display: grid; grid-template-columns: auto 1fr; gap: 2.5rem; align-items: end; padding: 1.6rem 0 1.2rem; }
+    .when .date { color: var(--muted); font-weight: 700; }
+    .when .time { font-family: var(--display); font-weight: 800; font-size: clamp(2.8rem, 6vw, 4.6rem); line-height: 0.95; letter-spacing: -0.04em; }
+    .when .mode { color: var(--amber); }
+    .readings { display: flex; gap: 2.4rem; flex-wrap: wrap; justify-content: flex-end; }
+    .storymain { display: grid; grid-template-columns: 1fr auto; gap: 1.5rem; align-items: end; }
+    .reading b { display: block; font-family: var(--display); font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; }
+    .reading span { color: var(--muted); font-size: 0.8rem; }
+    .reading.cold b { color: var(--sky); }
+    .transport { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+    .seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; }
+    .seg button { background: transparent; border: none; padding: 0.5rem 0.7rem; font-weight: 700; color: var(--muted); }
+    .seg button[aria-pressed="true"] { background: var(--panel-2); color: var(--amber); }
+
+    /* the story: five steps and what is happening now */
+    .story { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.3rem; }
+    .steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.4rem; list-style: none; margin: 0 0 1rem; padding: 0; counter-reset: s; }
+    .steps li { counter-increment: s; position: relative; padding-top: 0.9rem; color: var(--faint); font-weight: 700; font-size: 0.88rem; }
+    .steps li::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px; border-radius: 4px; background: var(--line); }
+    .steps li span::before { content: counter(s) "  "; }
+    .steps li.done { color: var(--muted); }
+    .steps li.done::before { background: var(--line-2); }
+    .steps li.now { color: var(--text); }
+    .steps li.now::before { background: var(--amber); box-shadow: 0 0 12px var(--amber-glow); }
+    .narration { font-family: var(--display); font-weight: 600; font-size: clamp(1.25rem, 2.1vw, 1.7rem); line-height: 1.25; letter-spacing: -0.01em; max-width: 60rem; }
+    .hint { margin-top: 0.7rem; display: inline-flex; align-items: center; gap: 0.6rem; background: rgba(255, 181, 71, 0.12);
+            color: var(--amber); border: 1px solid rgba(255, 181, 71, 0.35); padding: 0.4rem 0.8rem; border-radius: 99px; font-weight: 700; }
+    .hint:empty { display: none; }
+
+    /* the three panes */
+    .stage { display: grid; grid-template-columns: minmax(250px, 0.85fr) minmax(0, 1.35fr) minmax(280px, 0.9fr); gap: 1.4rem; margin-top: 1.4rem; align-items: start; }
+    .pane-title { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.6rem; }
+    .pane-title h2 { font-size: 1.05rem; }
+    .boxbody { max-width: 340px; margin: 0 auto; }
+    .motion { margin-top: 0.9rem; width: 100%; background: transparent; border: 1px dashed #8b7656; border-radius: 8px; padding: 0.45rem; color: #3b2e1d; font-weight: 700; }
+    .online { margin-top: 0.8rem; text-align: center; }
+
+    .map { background: var(--ink-2); border: 1px solid var(--line); border-radius: 14px; padding: 0.6rem; position: relative; }
+    .map svg { width: 100%; height: auto; display: block; max-height: 62vh; }
+    .map .city { fill: #121a2f; stroke: #2e3a5c; stroke-width: 1.5; }
+    .map .river { fill: none; stroke: var(--sky); stroke-opacity: 0.35; stroke-width: 2.4; stroke-linecap: round; }
+    .map .home .dot { stroke: var(--ink); stroke-width: 2; }
+    .map .home text { fill: var(--text); font: 700 18px var(--body); paint-order: stroke; stroke: var(--ink); stroke-width: 4px; }
+    .map .home text.sub { fill: var(--muted); font-weight: 400; font-size: 14px; }
+    .map .ring { fill: none; stroke-width: 2.5; opacity: 0; }
+    .map .home.asked .ring, .map .home.alert .ring, .map .home.help .ring { animation: ring 1.6s ease-out infinite; }
+    @keyframes ring { 0% { r: 11; opacity: 0.9; } 100% { r: 40; opacity: 0; } }
+    .legend { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.6rem; font-size: 0.82rem; }
+    .credit { position: absolute; right: 0.8rem; bottom: 0.5rem; font-size: 0.68rem; color: var(--faint); }
+
+    .phone { width: 100%; max-width: 330px; margin: 0 auto; background: #05070d; border: 1px solid var(--line-2); border-radius: 34px; padding: 0.8rem;
+             box-shadow: 0 1.4rem 2.8rem rgba(0, 0, 0, 0.5); }
+    .phone .screen2 { background: var(--ink); border-radius: 26px; min-height: 470px; padding: 1rem 0.9rem; overflow: hidden; }
+    .phone .notch { width: 34%; height: 6px; border-radius: 6px; background: #1c2236; margin: 0 auto 0.9rem; }
+    .phone.buzz { animation: buzz 0.08s linear 9; }
+    .who { display: flex; gap: 0.3rem; flex-wrap: wrap; justify-content: center; margin-bottom: 0.7rem; }
+    .who button { background: transparent; border: 1px solid var(--line-2); border-radius: 99px; padding: 0.22rem 0.65rem; font-size: 0.82rem; font-weight: 700; color: var(--muted); position: relative; }
+    .who button[aria-pressed="true"] { color: var(--ink); background: var(--amber); border-color: var(--amber); }
+    .who button .n { position: absolute; top: -6px; right: -6px; background: var(--coral); color: #fff; border-radius: 99px; font-size: 0.66rem; min-width: 1.05rem; height: 1.05rem; display: grid; place-items: center; }
+    .task { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 0.9rem; margin-bottom: 0.7rem; }
+    .task.help { border-color: rgba(255, 93, 120, 0.6); background: #2a1420; }
+    .task h3 { font-size: 1.3rem; margin: 0.15rem 0 0.4rem; }
+    .task p { margin: 0.4rem 0; font-size: 0.95rem; }
+    .eta { display: flex; gap: 0.35rem; margin: 0.6rem 0; }
+    .eta button { flex: 1; padding: 0.5rem 0; }
+    .big { width: 100%; padding: 0.7rem; margin-top: 0.4rem; }
+    .address { color: var(--amber); font-weight: 700; }
+    .empty { color: var(--muted); text-align: center; padding: 3rem 1rem; border: 1px dashed var(--line-2); border-radius: 14px; }
+
+    /* the grid that day */
+    .gridband { margin-top: 1.6rem; display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 1.4rem;
+                background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.3rem; }
+    .gridband svg { width: 100%; height: auto; }
+    .gridband svg text { fill: var(--muted); font: 11px var(--body); }
+    .events { list-style: none; margin: 0; padding: 0; }
+    .events li { display: grid; grid-template-columns: 4.6rem 1fr; gap: 0.6rem; padding: 0.4rem 0; border-bottom: 1px solid var(--line); color: var(--faint); font-size: 0.9rem; }
+    .events li.past { color: var(--text); }
+    .events li.past time { color: var(--amber); }
+    .feedline { margin-top: 0.8rem; }
+
+    /* first visit */
+    .intro { position: fixed; inset: 0; background: rgba(5, 8, 15, 0.82); backdrop-filter: blur(6px); display: grid; place-items: center; z-index: 50; padding: 1rem; }
+    .intro[hidden] { display: none; }
+    .intro .card { max-width: 40rem; background: var(--panel); border: 1px solid var(--line-2); border-radius: 18px; padding: 2rem; }
+    .intro h1 { font-size: clamp(1.9rem, 4vw, 2.7rem); line-height: 1.05; margin-bottom: 0.9rem; }
+    .intro ol { padding-left: 1.2rem; }
+    .intro li { margin: 0.35rem 0; }
+    .intro .actions { display: flex; gap: 0.6rem; margin-top: 1.3rem; flex-wrap: wrap; }
+
+    @media (max-width: 1150px) {
+      .stage { grid-template-columns: 1fr 1fr; }
+      .stage .mapcol { grid-column: 1 / -1; order: -1; }
+      .moment, .storymain { grid-template-columns: 1fr; }
+      .readings { justify-content: flex-start; }
+      .transport { justify-content: flex-start; }
+      .gridband { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 700px) {
+      .stage { grid-template-columns: 1fr; }
+      .stage .mapcol { order: 0; }
+      .steps { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+      .steps li { font-size: 0; } .steps li span::before { font-size: 0.8rem; }
+    }
+  </style>
+</head>
+<body>
+  <nav id="nav"></nav>
+  <div id="banner"></div>
+  <main class="wrap" id="main">
+    <section class="moment" aria-label="Right now in the replay">
+      <div class="when">
+        <div class="date"><span id="date"></span> · <span class="mode" id="mode"></span></div>
+        <div class="time" id="time">–</div>
+      </div>
+      <div class="readings" id="readings"></div>
+    </section>
+
+    <section class="story" aria-live="polite">
+      <ol class="steps" id="steps">
+        <li><span>The grid strains</span></li><li><span>Every box asks</span></li><li><span>Neighbours answer</span></li>
+        <li><span>Someone doesn't</span></li><li><span>A neighbour goes</span></li>
+      </ol>
+      <div class="storymain">
+        <div>
+          <div class="narration" id="narration">Loading…</div>
+          <div class="hint" id="hint"></div>
+        </div>
+        <div class="transport" aria-label="Replay controls">
+        <button class="btn ghost" onclick="restart()" title="Start the replay again from 3:15 PM">↺ Restart</button>
+        <div class="seg" role="group" aria-label="Speed" id="speeds">
+          <button data-speed="0">❚❚</button><button data-speed="1">1×</button><button data-speed="30">30×</button><button data-speed="120">120×</button>
+        </div>
+        <button class="btn" onclick="skip()" title="Jump to the next thing that happens">Skip ahead »</button>
+      </div>
+      </div>
+    </section>
+
+    <section class="stage">
+      <div>
+        <div class="pane-title"><h2>Margaret's box</h2><span class="small muted">Forest Lawn</span></div>
+        <div class="boxbody" id="box">
+          <div class="screen">
+            <div class="matrix" id="matrix" aria-hidden="true"></div>
+            <div class="line" id="boxline" role="status"></div>
+          </div>
+          <div class="presses">
+            <button class="press ok" id="press-ok" onclick="press('ok')">I'm OK</button>
+            <button class="press help" id="press-help" onclick="press('help')">Help</button>
+          </div>
+          <button class="motion" onclick="press('motion')">Walk past the motion sensor</button>
+        </div>
+        <div class="online small" id="online"></div>
+      </div>
+
+      <div class="mapcol">
+        <div class="pane-title"><h2>Calgary</h2><span class="small muted" id="answered"></span></div>
+        <div class="map">
+          <svg id="map" role="img" aria-label="Map of Calgary with each person's home"></svg>
+          <span class="credit">Map © OpenStreetMap contributors</span>
+        </div>
+        <div class="legend">
+          <span class="status ok">OK</span><span class="status asked">Asked</span><span class="status alert">No answer</span>
+          <span class="status help">Help</span><span class="status visitor">Someone's coming</span>
+        </div>
+      </div>
+
+      <div>
+        <div class="pane-title"><h2>A volunteer's phone</h2><span class="small muted" id="phonewho"></span></div>
+        <div class="phone" id="phone">
+          <div class="screen2">
+            <div class="notch"></div>
+            <div class="who" id="who" role="group" aria-label="Whose phone"></div>
+            <div id="tasks" aria-live="assertive"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="gridband" aria-label="The grid on January 13, 2024">
+      <div>
+        <div class="eyebrow">Alberta's grid that day · real AESO data</div>
+        <svg id="chart" viewBox="0 0 640 210" role="img" aria-label="Alberta electricity demand and pool price by hour"></svg>
+        <div class="small muted" id="chartnote"></div>
+      </div>
+      <div>
+        <div class="eyebrow">What the AESO did</div>
+        <ul class="events" id="events"></ul>
+        <div class="small muted feedline" id="lastfeed"></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="intro" id="intro" hidden>
+    <div class="card">
+      <div class="introbrand"><img src="mark.svg" alt="" width="56" height="56"><div><div class="wordmark big" aria-hidden="true">porchl<span class="i">i</span>ght</div><div class="slogan">A light left on for every neighbour.</div></div></div>
+      <div class="eyebrow">Hack the Change 2026 · Calgary</div>
+      <h1>When it's −30 and the grid is failing, someone checks on the neighbours.</h1>
+      <p class="muted">This replays Saturday, January 13, 2024, from the AESO's own records. That evening, every phone in Alberta got an emergency alert asking people to save power.</p>
+      <ol>
+        <li><b>The box</b> on the left is Margaret's home. It has two buttons: I'm OK and Help.</li>
+        <li><b>The map</b> shows five neighbours across Calgary.</li>
+        <li><b>The phone</b> on the right is a volunteer. When someone doesn't answer, their phone gets asked.</li>
+      </ol>
+      <p class="muted small">The bar under the clock always tells you what's happening and what to try next.</p>
+      <div class="actions">
+        <button class="btn primary" onclick="begin()">Play January 13, 2024</button>
+        <button class="btn" onclick="closeIntro()">Look around first</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="api.js"></script>
+  <script src="nav.js"></script>
+  <script src="patterns.js"></script>
+  <script src="demo.js"></script>
+</body>
+</html>
