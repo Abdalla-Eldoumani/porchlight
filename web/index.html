@@ -5,176 +5,139 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Porchlight · Demo</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;700;800&family=Atkinson+Hyperlegible+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="mark.svg" type="image/svg+xml">
   <script src="https://cdn.jsdelivr.net/npm/@auth0/auth0-spa-js@2.30.0/dist/auth0-spa-js.production.js"></script>
   <style>
-    body { background: radial-gradient(120% 70% at 50% -10%, #17213d 0%, var(--ink) 60%); min-height: 100vh; }
-    .wrap { max-width: 1480px; margin: 0 auto; padding: 0 1.5rem 2rem; }
+    body { min-height: 100vh; }
+    .demo { padding: 0 1.5rem 2rem; max-width: 1600px; margin: 0 auto; }
 
-    /* the moment: date, time, cold, grid */
-    .moment { display: grid; grid-template-columns: auto 1fr; gap: 2.5rem; align-items: end; padding: 1.6rem 0 1.2rem; }
-    .when .date { color: var(--muted); font-weight: 700; }
-    .when .time { font-family: var(--display); font-weight: 800; font-size: clamp(2.8rem, 6vw, 4.6rem); line-height: 0.95; letter-spacing: -0.04em; }
-    .when .mode { color: var(--amber); }
-    .readings { display: flex; gap: 2.4rem; flex-wrap: wrap; justify-content: flex-end; }
-    .storymain { display: grid; grid-template-columns: 1fr auto; gap: 1.5rem; align-items: end; }
-    .reading b { display: block; font-family: var(--display); font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; }
-    .reading span { color: var(--muted); font-size: 0.8rem; }
-    .reading.cold b { color: var(--sky); }
-    .transport { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
-    .seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; }
-    .seg button { background: transparent; border: none; padding: 0.5rem 0.7rem; font-weight: 700; color: var(--muted); }
-    .seg button[aria-pressed="true"] { background: var(--panel-2); color: var(--amber); }
-
-    /* the story: five steps and what is happening now */
-    .story { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.3rem; }
-    .steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.4rem; list-style: none; margin: 0 0 1rem; padding: 0; counter-reset: s; }
-    .steps li { counter-increment: s; position: relative; padding-top: 0.9rem; color: var(--faint); font-weight: 700; font-size: 0.88rem; }
-    .steps li::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px; border-radius: 4px; background: var(--line); }
-    .steps li span::before { content: counter(s) "  "; }
+    /* top row: the time, what's happening, and the replay controls */
+    .bar { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 2.2rem; align-items: center; padding: 1.2rem 0; border-bottom: 1px solid var(--rule); }
+    .when { display: grid; gap: 0.1rem; padding-right: 2.2rem; border-right: 1px solid var(--rule); }
+    .when .date { font-size: 0.84rem; color: var(--muted); }
+    .when .time { font-weight: 800; font-size: 2.6rem; line-height: 1; letter-spacing: -0.04em; }
+    .when .mode { font: 700 0.78rem var(--mono); color: var(--light); }
+    .steps { display: flex; gap: 1.1rem; list-style: none; margin: 0 0 0.35rem; padding: 0; counter-reset: s; font: 0.76rem var(--mono); }
+    .steps li { counter-increment: s; color: var(--faint); white-space: nowrap; }
+    .steps li span::before { content: counter(s) " "; }
     .steps li.done { color: var(--muted); }
-    .steps li.done::before { background: var(--line-2); }
-    .steps li.now { color: var(--text); }
-    .steps li.now::before { background: var(--amber); box-shadow: 0 0 12px var(--amber-glow); }
-    .narration { font-family: var(--display); font-weight: 600; font-size: clamp(1.25rem, 2.1vw, 1.7rem); line-height: 1.25; letter-spacing: -0.01em; max-width: 60rem; }
-    .hint { margin-top: 0.7rem; display: inline-flex; align-items: center; gap: 0.6rem; background: rgba(255, 181, 71, 0.12);
-            color: var(--amber); border: 1px solid rgba(255, 181, 71, 0.35); padding: 0.4rem 0.8rem; border-radius: 99px; font-weight: 700; }
+    .steps li.done span::before { content: "✓ "; color: var(--ok); }
+    .steps li.now { color: var(--light); font-weight: 700; }
+    .narration { font-size: 1.22rem; font-weight: 700; line-height: 1.35; max-width: 58rem; text-wrap: pretty; }
+    .hint { margin-top: 0.3rem; color: var(--light); font-size: 0.92rem; }
     .hint:empty { display: none; }
+    .transport { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
 
-    /* the three panes */
-    .stage { display: grid; grid-template-columns: minmax(250px, 0.85fr) minmax(0, 1.35fr) minmax(280px, 0.9fr); gap: 1.4rem; margin-top: 1.4rem; align-items: start; }
-    .pane-title { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.6rem; }
-    .pane-title h2 { font-size: 1.05rem; }
-    .boxbody { max-width: 340px; margin: 0 auto; }
-    .motion { margin-top: 0.9rem; width: 100%; background: transparent; border: 1px dashed #8b7656; border-radius: 8px; padding: 0.45rem; color: #3b2e1d; font-weight: 700; }
-    .online { margin-top: 0.8rem; text-align: center; }
+    /* the stage: box, city, phone */
+    .stage { display: grid; grid-template-columns: 290px minmax(0, 1fr) 310px; gap: 1.2rem; margin-top: 1.2rem; }
+    .col-title { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin-bottom: 0.6rem; }
+    .col-title h2 { font-size: 0.95rem; }
+    .col-title span { font-size: 0.82rem; color: var(--muted); }
+    .mapcol { display: flex; flex-direction: column; }
+    .mapframe { flex: 1; min-height: 600px; }
+    .readings { position: absolute; z-index: 500; top: 0.75rem; left: 0.75rem; display: flex; gap: 0; background: rgba(11, 13, 18, 0.9);
+                border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+    .reading { padding: 0.45rem 0.85rem; display: grid; }
+    .reading + .reading { border-left: 1px solid var(--rule); }
+    .reading b { font-size: 1.05rem; font-weight: 800; }
+    .reading span { font-size: 0.7rem; color: var(--muted); }
+    .reading.cold b { color: var(--sky); }
+    .legend { display: flex; gap: 1.1rem; flex-wrap: wrap; margin-top: 0.6rem; font-size: 0.8rem; }
+    .motion { margin-top: 0.8rem; width: 100%; background: transparent; border: 1px dashed #9a8a6e; border-radius: 6px; padding: 0.45rem; color: #4a3c28; font-weight: 700; font-size: 0.85rem; }
+    .online { margin-top: 0.7rem; font-size: 0.8rem; color: var(--muted); }
 
-    .map { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; position: relative; background: #0e1424; }
-    #map { height: min(62vh, 560px); background: #0e1424; font: inherit; }
-    #map .leaflet-tile-pane { filter: invert(1) hue-rotate(185deg) brightness(0.85) contrast(0.9) saturate(0.4); }
-    .map::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 400; border-radius: 14px;
-                  box-shadow: inset 0 0 80px 10px rgba(9, 13, 24, 0.85); }
-    .pin { position: relative; width: 26px; height: 26px; }
-    .pin .dot { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 50%; font: 800 12px var(--body);
-                color: var(--ink); background: var(--c); border: 2px solid var(--ink); box-shadow: 0 0 18px 2px var(--c); }
-    .pin .ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--c); opacity: 0; pointer-events: none; }
-    .pin.asked .ring, .pin.alert .ring, .pin.help .ring { animation: pulse 1.6s ease-out infinite; }
-    .pin .tag { position: absolute; left: 32px; top: 50%; transform: translateY(-50%); white-space: nowrap; padding: 0.25rem 0.55rem;
-                background: rgba(9, 13, 24, 0.82); border: 1px solid var(--line-2); border-radius: 8px; line-height: 1.15; backdrop-filter: blur(4px); }
-    .pin.above .tag { left: 50%; top: auto; bottom: 32px; transform: translateX(-50%); }
-    .pin .tag b { display: block; color: var(--text); font-size: 0.86rem; }
-    .pin .tag small { color: var(--muted); font-size: 0.72rem; }
-    .pin.ok { --c: var(--mint); } .pin.waiting { --c: var(--faint); } .pin.asked, .pin.visitor { --c: var(--amber); }
-    .pin.alert, .pin.help { --c: var(--coral); }
-    .pin.help .tag, .pin.alert .tag { border-color: var(--coral); }
-    @keyframes pulse { 0% { transform: scale(1); opacity: 0.9; } 100% { transform: scale(2.8); opacity: 0; } }
-    .leaflet-container a { color: var(--sky); }
-    .leaflet-control-attribution { background: rgba(9, 13, 24, 0.75) !important; color: var(--faint); font-size: 0.66rem; }
-    .leaflet-bar a { background: var(--panel-2); color: var(--text); border-color: var(--line-2); }
-    .leaflet-bar a:hover { background: var(--line); }
-    .dark-pop .leaflet-popup-content-wrapper, .dark-pop .leaflet-popup-tip { background: var(--panel); color: var(--text); border: 1px solid var(--line-2); }
-    .dark-pop .leaflet-popup-content { margin: 0.9rem 1rem; font: inherit; }
-    .pop h3 { font-size: 1.1rem; margin: 0; }
-    .pop p { margin: 0.35rem 0; }
-    .pop .btn { width: 100%; margin-top: 0.5rem; }
-    .pop-note { font-weight: 700; color: var(--amber); } .pop-note.ok { color: var(--mint); } .pop-note.warn { color: var(--coral); }
-    @media (prefers-reduced-motion: reduce) { .pin .ring { animation: none !important; } }
-    .legend { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.6rem; font-size: 0.82rem; }
-    .credit { position: absolute; right: 0.8rem; bottom: 0.5rem; font-size: 0.68rem; color: var(--faint); }
-
-    .phone { width: 100%; max-width: 330px; margin: 0 auto; background: #05070d; border: 1px solid var(--line-2); border-radius: 34px; padding: 0.8rem;
-             box-shadow: 0 1.4rem 2.8rem rgba(0, 0, 0, 0.5); }
-    .phone .screen2 { background: var(--ink); border-radius: 26px; min-height: 470px; padding: 1rem 0.9rem; overflow: hidden; }
-    .phone .notch { width: 34%; height: 6px; border-radius: 6px; background: #1c2236; margin: 0 auto 0.9rem; }
+    .phone { background: #050608; border: 1px solid var(--rule-2); border-radius: 30px; padding: 0.7rem; }
+    .phone .screen2 { background: var(--ink); border-radius: 22px; min-height: 540px; padding: 0.9rem 0.8rem; overflow: hidden; }
+    .phone .notch { width: 30%; height: 5px; border-radius: 5px; background: #1d222c; margin: 0 auto 0.9rem; }
     .phone.buzz { animation: buzz 0.08s linear 9; }
-    .who { display: flex; gap: 0.3rem; flex-wrap: wrap; justify-content: center; margin-bottom: 0.7rem; }
-    .who button { background: transparent; border: 1px solid var(--line-2); border-radius: 99px; padding: 0.22rem 0.65rem; font-size: 0.82rem; font-weight: 700; color: var(--muted); position: relative; }
-    .who button[aria-pressed="true"] { color: var(--ink); background: var(--amber); border-color: var(--amber); }
-    .who button .n { position: absolute; top: -6px; right: -6px; background: var(--coral); color: #fff; border-radius: 99px; font-size: 0.66rem; min-width: 1.05rem; height: 1.05rem; display: grid; place-items: center; }
-    .task { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 0.9rem; margin-bottom: 0.7rem; }
-    .task.help { border-color: rgba(255, 93, 120, 0.6); background: #2a1420; }
-    .task h3 { font-size: 1.3rem; margin: 0.15rem 0 0.4rem; }
-    .task p { margin: 0.4rem 0; font-size: 0.95rem; }
+    .who { display: flex; border: 1px solid var(--rule-2); border-radius: 6px; overflow: hidden; margin-bottom: 0.9rem; }
+    .who button { flex: 1; background: transparent; border: none; padding: 0.4rem 0; font-size: 0.82rem; font-weight: 700; color: var(--muted); position: relative; }
+    .who button + button { border-left: 1px solid var(--rule); }
+    .who button[aria-pressed="true"] { background: var(--light-soft); color: var(--light); }
+    .who button .n { margin-left: 0.3rem; background: var(--alert); color: #fff; border-radius: 4px; font-size: 0.68rem; padding: 0 0.3rem; }
+    .task { border-top: 2px solid var(--light); padding: 0.8rem 0 0.4rem; margin-bottom: 0.6rem; }
+    .task.help { border-top-color: var(--alert); }
+    .task h3 { font-size: 1.25rem; margin: 0.2rem 0 0.4rem; }
+    .task p { margin: 0.4rem 0; font-size: 0.93rem; }
     .eta { display: flex; gap: 0.35rem; margin: 0.6rem 0; }
-    .eta button { flex: 1; padding: 0.5rem 0; }
-    .big { width: 100%; padding: 0.7rem; margin-top: 0.4rem; }
-    .address { color: var(--amber); font-weight: 700; }
-    .empty { color: var(--muted); text-align: center; padding: 3rem 1rem; border: 1px dashed var(--line-2); border-radius: 14px; }
+    .eta button { flex: 1; min-height: 2.2rem; padding: 0; }
+    .big { width: 100%; margin-top: 0.45rem; }
+    .address { color: var(--light); font-weight: 700; }
+    .empty { color: var(--muted); text-align: center; padding: 3.5rem 0.5rem; font-size: 0.92rem; }
+    .empty b { display: block; color: var(--text); margin-bottom: 0.3rem; }
 
     /* the grid that day */
-    .gridband { margin-top: 1.6rem; display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 1.4rem;
-                background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 1.1rem 1.3rem; }
+    .gridband { margin-top: 1.6rem; display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 2rem; padding-top: 1.4rem; border-top: 1px solid var(--rule); }
+    .gridband h2 { font-size: 0.95rem; margin-bottom: 0.7rem; }
     .gridband svg { width: 100%; height: auto; }
-    .gridband svg text { fill: var(--muted); font: 11px var(--body); }
+    .gridband svg text { fill: var(--faint); font: 10px var(--mono); }
     .events { list-style: none; margin: 0; padding: 0; }
-    .events li { display: grid; grid-template-columns: 4.6rem 1fr; gap: 0.6rem; padding: 0.4rem 0; border-bottom: 1px solid var(--line); color: var(--faint); font-size: 0.9rem; }
+    .events li { display: grid; grid-template-columns: 6.2rem 1fr; gap: 0.6rem; padding: 0.45rem 0; border-bottom: 1px solid var(--rule); color: var(--faint); font-size: 0.88rem; }
+    .events li time { font-family: var(--mono); white-space: nowrap; font-size: 0.8rem; }
     .events li.past { color: var(--text); }
-    .events li.past time { color: var(--amber); }
+    .events li.past time { color: var(--light); }
     .feedline { margin-top: 0.8rem; }
 
     /* first visit */
-    .intro { position: fixed; inset: 0; background: rgba(5, 8, 15, 0.82); backdrop-filter: blur(6px); display: grid; place-items: center; z-index: 50; padding: 1rem; }
+    .intro { position: fixed; inset: 0; background: rgba(5, 6, 9, 0.86); display: grid; place-items: center; z-index: 3000; padding: 1rem; }
     .intro[hidden] { display: none; }
-    .intro .card { max-width: 40rem; background: var(--panel); border: 1px solid var(--line-2); border-radius: 18px; padding: 2rem; }
-    .intro h1 { font-size: clamp(1.9rem, 4vw, 2.7rem); line-height: 1.05; margin-bottom: 0.9rem; }
-    .intro ol { padding-left: 1.2rem; }
-    .intro li { margin: 0.35rem 0; }
-    .intro .actions { display: flex; gap: 0.6rem; margin-top: 1.3rem; flex-wrap: wrap; }
+    .intro .card { max-width: 38rem; background: var(--surface); border: 1px solid var(--rule-2); border-radius: 12px; padding: 2.2rem; }
+    .intro h1 { font-size: clamp(1.8rem, 3.6vw, 2.4rem); line-height: 1.1; margin: 0.6rem 0 0.9rem; }
+    .intro dl { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1rem; margin: 1.3rem 0; }
+    .intro dt { font-weight: 800; }
+    .intro dd { margin: 0; color: var(--muted); }
+    .intro .actions { display: flex; gap: 0.6rem; margin-top: 1.5rem; flex-wrap: wrap; }
 
-    @media (max-width: 1150px) {
+    @media (max-width: 1200px) {
+      .bar { grid-template-columns: auto minmax(0, 1fr); }
+      .transport { grid-column: 1 / -1; }
       .stage { grid-template-columns: 1fr 1fr; }
       .stage .mapcol { grid-column: 1 / -1; order: -1; }
-      .moment, .storymain { grid-template-columns: 1fr; }
-      .readings { justify-content: flex-start; }
-      .transport { justify-content: flex-start; }
       .gridband { grid-template-columns: 1fr; }
     }
-    @media (max-width: 700px) {
+    @media (max-width: 720px) {
+      .bar { grid-template-columns: 1fr; gap: 1rem; }
+      .when { border-right: none; padding-right: 0; }
+      .steps { flex-wrap: wrap; gap: 0.3rem 0.8rem; }
       .stage { grid-template-columns: 1fr; }
-      .stage .mapcol { order: 0; }
-      .steps { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-      .steps li { font-size: 0; } .steps li span::before { font-size: 0.8rem; }
+      .mapframe { min-height: 440px; }
+      .readings { flex-wrap: wrap; right: 0.75rem; }
     }
   </style>
 </head>
 <body>
   <nav id="nav"></nav>
   <div id="banner"></div>
-  <main class="wrap" id="main">
-    <section class="moment" aria-label="Right now in the replay">
+  <main class="demo" id="main">
+    <header class="bar" aria-live="polite">
       <div class="when">
-        <div class="date"><span id="date"></span> · <span class="mode" id="mode"></span></div>
-        <div class="time" id="time">–</div>
+        <span class="date" id="date"></span>
+        <span class="time" id="time">–</span>
+        <span class="mode" id="mode"></span>
       </div>
-      <div class="readings" id="readings"></div>
-    </section>
-
-    <section class="story" aria-live="polite">
-      <ol class="steps" id="steps">
-        <li><span>The grid strains</span></li><li><span>Every box asks</span></li><li><span>Neighbours answer</span></li>
-        <li><span>Someone doesn't</span></li><li><span>A neighbour goes</span></li>
-      </ol>
-      <div class="storymain">
-        <div>
-          <div class="narration" id="narration">Loading…</div>
-          <div class="hint" id="hint"></div>
-        </div>
-        <div class="transport" aria-label="Replay controls">
-        <button class="btn ghost" onclick="restart()" title="Start the replay again from 3:15 PM">↺ Restart</button>
+      <div class="story">
+        <ol class="steps" id="steps">
+          <li><span>The grid strains</span></li><li><span>Every box asks</span></li><li><span>People answer</span></li>
+          <li><span>Someone doesn't</span></li><li><span>Someone goes</span></li>
+        </ol>
+        <p class="narration" id="narration">Starting up…</p>
+        <p class="hint" id="hint"></p>
+      </div>
+      <div class="transport" aria-label="Replay controls">
+        <button class="btn ghost" onclick="restart()" title="Start the replay again from 3:15 PM">Restart</button>
         <div class="seg" role="group" aria-label="Speed" id="speeds">
-          <button data-speed="0">❚❚</button><button data-speed="1">1×</button><button data-speed="30">30×</button><button data-speed="120">120×</button>
+          <button data-speed="0" aria-label="Pause">II</button><button data-speed="1">1×</button><button data-speed="30">30×</button><button data-speed="120">120×</button>
         </div>
-        <button class="btn" onclick="skip()" title="Jump to the next thing that happens">Skip ahead »</button>
+        <button class="btn primary" onclick="skip()" title="Jump to the next thing that happens">Skip ahead</button>
       </div>
-      </div>
-    </section>
+    </header>
 
     <section class="stage">
       <div>
-        <div class="pane-title"><h2>Margaret's box</h2><span class="small muted">Forest Lawn</span></div>
+        <div class="col-title"><h2>Margaret's box</h2><span>Forest Lawn</span></div>
         <div class="boxbody" id="box">
           <div class="screen">
             <div class="matrix" id="matrix" aria-hidden="true"></div>
@@ -186,22 +149,23 @@
           </div>
           <button class="motion" onclick="press('motion')">Walk past the motion sensor</button>
         </div>
-        <div class="online small" id="online"></div>
+        <div class="online" id="online"></div>
       </div>
 
       <div class="mapcol">
-        <div class="pane-title"><h2>Calgary</h2><span class="small muted" id="answered"></span></div>
-        <div class="map">
-          <div id="map" role="region" aria-label="Map of Calgary. Select a home to see how they are and ask for a check-in."></div>
+        <div class="col-title"><h2>Calgary</h2><span id="answered"></span></div>
+        <div class="mapframe">
+          <div class="readings" id="readings"></div>
+          <div id="map" style="height:100%" role="region" aria-label="Map of Calgary. Select a home to see how they are and ask for a check-in."></div>
         </div>
         <div class="legend">
           <span class="status ok">OK</span><span class="status asked">Asked</span><span class="status alert">No answer</span>
-          <span class="status help">Help</span><span class="status visitor">Someone's coming</span>
+          <span class="status help">Help</span><span class="status visitor">Help is coming</span>
         </div>
       </div>
 
       <div>
-        <div class="pane-title"><h2>A caregiver's phone</h2><span class="small muted" id="phonewho"></span></div>
+        <div class="col-title"><h2>A caregiver's phone</h2><span id="phonewho"></span></div>
         <div class="phone" id="phone">
           <div class="screen2">
             <div class="notch"></div>
@@ -214,12 +178,12 @@
 
     <section class="gridband" aria-label="The grid on January 13, 2024">
       <div>
-        <div class="eyebrow">Alberta's grid that day · real AESO data</div>
+        <h2>Alberta's grid that day</h2>
         <svg id="chart" viewBox="0 0 640 210" role="img" aria-label="Alberta electricity demand and pool price by hour"></svg>
         <div class="small muted" id="chartnote"></div>
       </div>
       <div>
-        <div class="eyebrow">What the AESO did</div>
+        <h2>What the AESO did</h2>
         <ul class="events" id="events"></ul>
         <div class="small muted feedline" id="lastfeed"></div>
       </div>
@@ -227,17 +191,15 @@
   </main>
 
   <div class="intro" id="intro" hidden>
-    <div class="card">
-      <div class="introbrand"><img src="mark.svg" alt="" width="56" height="56"><div><div class="wordmark big" aria-hidden="true">porchl<span class="i">i</span>ght</div><div class="slogan">A light left on for every neighbour.</div></div></div>
-      <div class="eyebrow">Hack the Change 2026 · Calgary</div>
-      <h1>Someone always checks on the people who live alone.</h1>
-      <p class="muted">Porchlight is a box by the door and the people behind it: nurses, home-care workers, family and neighbours. This demo plays back a real night, January 13, 2024, when Calgary hit −30 and Alberta's grid nearly ran out.</p>
-      <ol>
-        <li><b>The box</b> on the left is Margaret's home: I'm OK and Help.</li>
-        <li><b>The map</b> is Calgary. Click any home to see how they are, or ask for a check-in.</li>
-        <li><b>The phone</b> on the right is a caregiver's. When someone doesn't answer, their phone gets asked.</li>
-      </ol>
-      <p class="muted small">The bar under the clock always tells you what's happening and what to try next.</p>
+    <div class="card" role="dialog" aria-modal="true" aria-labelledby="intro-h">
+      <div class="introbrand"><img src="mark.svg" alt="" width="44" height="44"><div><div class="wordmark big" aria-hidden="true">porchlight</div></div></div>
+      <h1 id="intro-h">Someone always checks on the people who live alone.</h1>
+      <p class="muted">A box by the door, and the nurses, home-care workers, family and neighbours behind it. This plays back a real night: January 13, 2024, when Calgary hit −30 and Alberta's grid nearly ran out.</p>
+      <dl>
+        <dt>Box</dt><dd>Margaret's home in Forest Lawn. Two buttons: I'm OK and Help.</dd>
+        <dt>Map</dt><dd>Calgary. Click a home to see how they are or ask for a check-in.</dd>
+        <dt>Phone</dt><dd>A caregiver's. When someone doesn't answer, it gets asked.</dd>
+      </dl>
       <div class="actions">
         <button class="btn primary" onclick="begin()">Play the January 13 night</button>
         <button class="btn" onclick="closeIntro()">Look around first</button>
@@ -249,6 +211,7 @@
   <script src="nav.js"></script>
   <script src="patterns.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
+  <script src="map.js"></script>
   <script src="demo.js"></script>
 </body>
 </html>
