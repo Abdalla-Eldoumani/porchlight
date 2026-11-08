@@ -1,0 +1,8 @@
+fastapi==0.162.2
+uvicorn==0.54.0
+httpx==0.28.1
+PyJWT[crypto]==2.15.0
+psycopg[binary]==3.3.8
+pytest==9.1.1
+tzdata==2026.6
+keyring==25.7.0
