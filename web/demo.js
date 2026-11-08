@@ -201,7 +201,7 @@ async function refresh() {
   $("box").classList.toggle("live", me.box_online);
   $("boxmode").textContent = me.box_online ? "● Real box, live" : "Simulator";
   $("boxmode").classList.toggle("live", me.box_online);
-  $("online").textContent = me.box_online ? "This mirrors the box by the door. Press its button: once for Help, twice for I'm OK."
+  $("online").textContent = me.box_online ? "This mirrors the box by the door. Press its button once for I'm OK, twice for Help."
     : "No real box connected, so you can press for Margaret here.";
   city.update(S.residents);
   const ok = S.residents.filter(r => r.status === "ok").length;
