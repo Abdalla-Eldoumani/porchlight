@@ -109,6 +109,8 @@ async def connect_store():
             await new.add_grid(start, "aeso_ets_2024", replay.conditions(start))
     except Exception as e:
         store_error = f"{type(e).__name__}: {e}"[:300]
+        if "ProactorEventLoop" in store_error:  # Windows: psycopg's async mode needs the selector loop
+            store_error = "On Windows, start the server with --loop asyncio:SelectorEventLoop (see the README), then save again."
         return False
     old, store, store_error = store, new, None
     if isinstance(old, PgStore) and old.conn:
