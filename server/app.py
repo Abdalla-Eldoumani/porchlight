@@ -209,15 +209,48 @@ def resident_view(rid):
         status = "waiting"
     lang = engine.volunteers.get(a.responder, {}).get("language", "en") if a else "en"
     seen = last_poll.get(rid)
+    activity = max((t for t in (s.last_ok, s.last_motion) if t), default=None)
+    last_help = engine.alerts.get(s.last_help_id)
     return {"id": rid, "name": r.name, "community": r.community, "simulated": r.simulated,
             "lat": PLACE[rid][0], "lon": PLACE[rid][1],
             "status": status, "last_ok": hm(s.last_ok) if s.last_ok else None,
             "last_motion": hm(s.last_motion) if s.last_motion else None,
+            "last_ok_at": s.last_ok.isoformat() if s.last_ok else None,
+            "last_motion_at": s.last_motion.isoformat() if s.last_motion else None,
+            "last_activity_seconds": max(0, (clock.now() - activity).total_seconds()) if activity else None,
+            "assigned_responder": engine.name((a.ack_by or a.responder) if a else (r.volunteers or ["coordinator"])[0]),
+            "help_resolved_at": last_help.closed_at.isoformat() if last_help and last_help.closed_at else None,
             "cutoff": hm(datetime.combine(date.today(), r.cutoff)), "alert": alert_view(a, lang),
             "box": box(rid), "box_online": seen is not None and _time.monotonic() - seen < 10}
 
 
 # ---- coordinator API --------------------------------------------------------------
+def manual_check_view(rid):
+    check = engine.state[rid].manual_check
+    if not check:
+        return None
+    return {"id": check.id, "resident_id": rid, "status": check.status,
+            "requested_at": check.requested_at.isoformat(), "requested_by": check.requested_by,
+            "deadline": check.deadline.isoformat(),
+            "remaining_seconds": max(0, (check.deadline - clock.now()).total_seconds()) if check.status == "pending" else 0,
+            "response_at": check.response_at.isoformat() if check.response_at else None,
+            "received_at": check.received_at.isoformat() if check.received_at else None}
+
+
+@app.post("/api/residents/{rid}/check-in")
+async def request_checkin(rid: str, who: str = Depends(auth.coordinator)):
+    if rid not in engine.residents:
+        raise HTTPException(404)
+    try:
+        seconds = int(settings.get("PORCHLIGHT_CHECKIN_TIMEOUT_SECONDS", "300"))
+        if seconds <= 0:
+            raise ValueError
+    except (ValueError, TypeError):
+        raise HTTPException(500, "PORCHLIGHT_CHECKIN_TIMEOUT_SECONDS must be a positive integer")
+    engine.request_checkin(rid, clock.now(), who, timedelta(seconds=seconds))
+    return manual_check_view(rid)
+
+
 @app.get("/api/config")
 async def config():
     return {"auth0": auth.public_config(), "store": store.kind, "store_error": store_error,
@@ -293,6 +326,8 @@ def next_moment(now):
     running out, or an unanswered request moving to the next person."""
     times = [e["time"] for e in replay.events]
     for s in engine.state.values():
+        if s.manual_check and s.manual_check.status == "pending":
+            times.append(s.manual_check.deadline)
         if s.wave_at:
             times.append(s.wave_at + WAVE_WAIT)
     for a in engine.alerts.values():
@@ -319,7 +354,7 @@ async def screen_press(rid: str, kind: str = Body(embed=True), who: str = Depend
 
 @app.post("/api/alerts/{alert_id}/{action}")
 async def coordinator_action(alert_id: int, action: str, who: str = Depends(auth.coordinator)):
-    if action not in ("resolved", "cant"):
+    if action not in ("resolved", "cant", "going"):
         raise HTTPException(400)
     if not engine.volunteer_action("coordinator", alert_id, action, clock.now()):
         raise HTTPException(409, "Alert already closed")
@@ -471,17 +506,30 @@ async def device_event(rid: str, kind: str = Body(embed=True)):
 
 
 @app.get("/api/device/{rid}", dependencies=[Depends(device)])
-async def device_poll(rid: str):
+async def device_poll(rid: str, checkin_received: int | None = None):
     if rid not in engine.residents:
         raise HTTPException(404)
     last_poll[rid] = _time.monotonic()
     engine.box_seen(rid)
+    if checkin_received is not None:
+        engine.checkin_received(rid, checkin_received, clock.now())
     return box(rid)
 
 
 def box(rid):
     s = engine.state[rid]
-    return {"display": s.display, "text": s.text, "buzz": s.buzz}
+    a = engine.alerts.get(s.last_help_id)
+    help_status = "none" if not a else ("resolved" if a.closed_at else "acknowledged" if a.ack_by else "requested")
+    check = manual_check_view(rid)
+    display, text = s.display, s.text
+    if help_status in ("requested", "acknowledged"):
+        display = "visitor" if a.ack_by else "help"
+        if not a.ack_by:
+            text = "Help requested; awaiting a caregiver response"
+    elif check and check["status"] == "pending" and not engine.current_alert(rid):
+        display, text = "ask", "Caregiver check-in: double press for I'm OK"
+    return {"display": display, "text": text, "buzz": s.buzz,
+            "buzz_pattern": s.buzz_pattern, "help_status": help_status, "manual_check": check}
 
 
 app.mount("/", StaticFiles(directory=ROOT / "web", html=True), name="web")
