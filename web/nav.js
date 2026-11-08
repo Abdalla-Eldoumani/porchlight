@@ -37,25 +37,21 @@ function readingButtons() {
 async function renderNav() {
   const here = location.pathname.split("/").pop() || "index.html";
   const pages = [["index.html", "Demo"], ["pitch.html", "Pitch"], ["about.html", "How it works"],
-                 ["dashboard.html", "Coordinator"], ["box.html", "Box"], ["setup.html", "Keys"]];
+                 ["dashboard.html", "Caregivers"], ["box.html", "Box"], ["setup.html", "Keys"]];
   const nav = document.getElementById("nav");
   nav.className = "nav";
   nav.setAttribute("aria-label", "Main");
   nav.innerHTML = `<a class="skip" href="#main">Skip to content</a>${brandHTML()}
     <div class="links">${pages.map(([href, name]) =>
       `<a href="${href}"${href === here ? ' aria-current="page"' : ""}>${name}</a>`).join("")}</div>
-    <div class="right">
-      <span id="chips" class="chips"></span>
-      ${readingButtons()}
-    </div>`;
-  try {
-    const c = await (await fetch("/api/config")).json();
-    const chip = (on, label, title) => `<a class="chip ${on ? "on" : ""}" href="setup.html" title="${title}">${label}</a>`;
-    document.getElementById("chips").innerHTML =
-      chip(c.gemini, "Gemini", c.gemini ? "Messages are written by Gemini" : "Add a Gemini key on the Keys page") +
-      chip(c.store !== "memory", "Tiger Data", c.store === "memory" ? "Data is kept in memory" : "Stored in " + c.store) +
-      chip(c.aeso_key, "AESO live", c.aeso_key ? "Live grid data is available" : "Add an AESO key for live mode") +
-      chip(!!c.auth0, "Auth0", c.auth0 ? "Coordinator sign-in is on" : "Sign-in is off (fine for the demo)");
-    return c;
-  } catch { return null; }
+    <div class="right">${readingButtons()}</div>`;
+}
+
+// Which services are switched on, for the footer line on pages that show it.
+function serviceChips(c) {
+  const chip = (on, label, title) => `<a class="chip ${on ? "on" : ""}" href="setup.html" title="${title}">${label}</a>`;
+  return chip(c.gemini, "Gemini", c.gemini ? "Messages are written by Gemini" : "Add a Gemini key on the Keys page") +
+    chip(c.store !== "memory", "Tiger Data", c.store === "memory" ? "Data is kept in memory" : "Stored in " + c.store) +
+    chip(c.aeso_key, "AESO live", c.aeso_key ? "Live grid data is available" : "Add an AESO key for live mode") +
+    chip(!!c.auth0, "Auth0", c.auth0 ? "Caregiver sign-in is on" : "Sign-in is off (fine for the demo)");
 }
