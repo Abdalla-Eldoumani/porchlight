@@ -9,6 +9,7 @@ async function setupAuth() {
     domain: cfg.auth0.domain,
     clientId: cfg.auth0.clientId,
     authorizationParams: { audience: cfg.auth0.audience, redirect_uri: location.origin + location.pathname },
+    cacheLocation: "localstorage",   // stay signed in across reloads and between the demo and the console
   });
   if (location.search.includes("code=") && location.search.includes("state=")) {
     await auth0Client.handleRedirectCallback();
