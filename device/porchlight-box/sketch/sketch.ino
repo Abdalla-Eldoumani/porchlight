@@ -1,12 +1,12 @@
 // Porchlight UNO Q: physical inputs stay on the MCU; Linux owns networking.
 // Verified wiring: PIR D2, button D3 to GND (INPUT_PULLUP), green D8, red D9.
-// D5 controls the existing motor driver/module, HIGH=ON, LOW=OFF.
-// Enable only after the driver's voltage/current/protection are verified.
+// D5 drives a 3-pin vibration motor module (VCC 5V, GND, IN on D5): HIGH=ON, LOW=OFF.
+// Tested on the module: D5 HIGH runs the motor, LOW stops it.
 #include "Arduino_RouterBridge.h"
 #include <Arduino_LED_Matrix.h>
 
 #ifndef PORCHLIGHT_MOTOR_ENABLED
-#define PORCHLIGHT_MOTOR_ENABLED 0
+#define PORCHLIGHT_MOTOR_ENABLED 1
 #endif
 const int PIN_PIR = 2, PIN_BUTTON = 3, PIN_MOTOR = 5;
 const int PIN_GREEN = 8, PIN_RED = 9;
