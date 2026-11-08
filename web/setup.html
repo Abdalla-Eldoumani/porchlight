@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Porchlight · Keys</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="mark.svg" type="image/svg+xml">
+  <style>
+    main { max-width: 52rem; margin: 0 auto; padding: 2rem 1.5rem 7rem; }
+    h1 { font-size: 2.3rem; margin-bottom: 0.4rem; }
+    .lede { color: var(--muted); max-width: 40rem; }
+    .progress { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1.2rem 0 1.6rem; }
+    .svc { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 1.2rem 1.3rem; margin-bottom: 1rem; }
+    .svc.works { border-color: rgba(63, 224, 162, 0.5); }
+    .svc.failed { border-color: rgba(255, 93, 120, 0.55); }
+    .svc header { display: flex; justify-content: space-between; gap: 1rem; align-items: start; }
+    .svc h2 { font-size: 1.3rem; }
+    .svc .why { color: var(--muted); margin: 0.25rem 0 0.8rem; }
+    .prize { font-size: 0.72rem; font-weight: 700; color: var(--amber); border: 1px solid rgba(255, 181, 71, 0.4); border-radius: 99px; padding: 0.1rem 0.55rem; white-space: nowrap; }
+    label { display: block; font-weight: 700; font-size: 0.88rem; margin: 0.7rem 0 0.3rem; }
+    .row { display: flex; gap: 0.5rem; }
+    input[type=text], input[type=password] { flex: 1; min-width: 0; background: var(--ink-2); border: 1px solid var(--line-2); color: var(--text);
+            border-radius: 8px; padding: 0.6rem 0.75rem; font: inherit; font-family: ui-monospace, Consolas, monospace; font-size: 0.9rem; }
+    input::placeholder { color: var(--faint); }
+    .now { font-size: 0.8rem; color: var(--muted); margin-top: 0.3rem; }
+    .steps { font-size: 0.88rem; color: var(--muted); margin: 0.6rem 0 0; padding-left: 1.2rem; }
+    .result { margin-top: 0.7rem; font-weight: 700; font-size: 0.92rem; }
+    .result.ok { color: var(--mint); } .result.ok::before { content: "✓ "; }
+    .result.bad { color: var(--coral); } .result.bad::before { content: "✕ "; }
+    .tools { display: flex; gap: 0.5rem; margin-top: 0.8rem; flex-wrap: wrap; }
+    .savebar { position: fixed; left: 0; right: 0; bottom: 0; background: rgba(15, 21, 38, 0.96); border-top: 1px solid var(--line-2);
+               padding: 0.85rem 1.5rem; display: flex; gap: 1rem; align-items: center; justify-content: center; flex-wrap: wrap; backdrop-filter: blur(8px); }
+    .savebar label { display: inline-flex; gap: 0.45rem; align-items: center; margin: 0; font-weight: 400; }
+    .code { display: none; }
+    .code input { width: 8rem; flex: none; text-transform: uppercase; }
+    .saved { color: var(--mint); font-weight: 700; }
+  </style>
+</head>
+<body>
+  <nav id="nav"></nav>
+  <main id="main">
+    <div class="eyebrow">Setup</div>
+    <h1>Connect the services</h1>
+    <p class="lede">Every key here is optional. With none at all, the demo still runs: the replay uses the real 2024 data, messages use a template and data stays in memory. Paste a key, press <b>Test</b>, then <b>Save</b>. Keys are never written into the project's files.</p>
+    <div class="progress" id="progress"></div>
+
+    <section class="svc" id="svc-gemini">
+      <header><div><h2>Gemini</h2><p class="why">Writes each volunteer's message in plain words and in their language (Yusuf reads Arabic, Mei reads Chinese). The rules still decide who is asked.</p></div><span class="prize">MLH · Gemini API</span></header>
+      <label for="GEMINI_API_KEY">API key</label>
+      <div class="row"><input type="password" id="GEMINI_API_KEY" autocomplete="off" placeholder="AIza…"><button class="btn ghost reveal" data-for="GEMINI_API_KEY">Show</button></div>
+      <div class="now" data-now="GEMINI_API_KEY"></div>
+      <label for="GEMINI_MODEL">Model <span class="muted">(leave empty for gemini-3.6-flash)</span></label>
+      <div class="row"><input type="text" id="GEMINI_MODEL" autocomplete="off" placeholder="gemini-3.6-flash"></div>
+      <ol class="steps"><li>Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> and sign in.</li><li>Create API key, copy it, paste it here.</li><li>If the test says the model wasn't found, type <code>gemini-2.5-flash</code> as the model.</li></ol>
+      <div class="tools"><button class="btn" data-test="gemini">Test</button></div><div class="result" data-result="gemini"></div>
+    </section>
+
+    <section class="svc" id="svc-database">
+      <header><div><h2>Tiger Data</h2><p class="why">Stores the grid readings and every button press in TimescaleDB, and draws the chart from it.</p></div><span class="prize">MLH · Tiger Data</span></header>
+      <label for="DATABASE_URL">Connection string</label>
+      <div class="row"><input type="password" id="DATABASE_URL" autocomplete="off" placeholder="postgres://tsdbadmin:…@….tsdb.cloud.timescale.com:5432/tsdb?sslmode=require"><button class="btn ghost reveal" data-for="DATABASE_URL">Show</button></div>
+      <div class="now" data-now="DATABASE_URL"></div>
+      <ol class="steps"><li>Open <a href="https://console.cloud.tigerdata.com/" target="_blank" rel="noopener">console.cloud.tigerdata.com</a> and create a free service.</li><li>Copy its connection string (it ends in <code>?sslmode=require</code>) and paste it here.</li><li>Saving moves the app onto the database straight away. The tables are created for you.</li></ol>
+      <div class="tools"><button class="btn" data-test="database">Test</button></div><div class="result" data-result="database"></div>
+    </section>
+
+    <section class="svc" id="svc-aeso">
+      <header><div><h2>AESO live data</h2><p class="why">The replay already uses real AESO data. This key adds <b>Live now</b>: Alberta's demand and supply cushion as they are today.</p></div><span class="prize">Voltex · real energy data</span></header>
+      <label for="AESO_API_KEY">API key</label>
+      <div class="row"><input type="password" id="AESO_API_KEY" autocomplete="off"><button class="btn ghost reveal" data-for="AESO_API_KEY">Show</button></div>
+      <div class="now" data-now="AESO_API_KEY"></div>
+      <ol class="steps"><li>Open <a href="https://developer-apim.aeso.ca/" target="_blank" rel="noopener">developer-apim.aeso.ca</a> and sign up.</li><li>Under <b>Products</b>, open <b>AESO Public API</b> and subscribe. Your <b>Profile</b> then shows the subscription's primary key: copy it and paste it here.</li></ol>
+      <div class="tools"><button class="btn" data-test="aeso">Test</button><button class="btn ghost" data-test="weather">Test the weather feed</button></div><div class="result" data-result="aeso"></div><div class="result" data-result="weather"></div>
+    </section>
+
+    <section class="svc" id="svc-auth0">
+      <header><div><h2>Auth0 sign-in</h2><p class="why">Makes coordinators sign in before they can see anyone's status. Turn this on last, and test it on localhost first, or you can lock yourself out of your own demo.</p></div><span class="prize">MLH · Auth0</span></header>
+      <label for="AUTH0_DOMAIN">Domain</label>
+      <div class="row"><input type="text" id="AUTH0_DOMAIN" autocomplete="off" placeholder="your-tenant.us.auth0.com"></div>
+      <div class="now" data-now="AUTH0_DOMAIN"></div>
+      <label for="AUTH0_CLIENT_ID">Client ID</label>
+      <div class="row"><input type="text" id="AUTH0_CLIENT_ID" autocomplete="off"></div>
+      <div class="now" data-now="AUTH0_CLIENT_ID"></div>
+      <label for="AUTH0_AUDIENCE">API audience</label>
+      <div class="row"><input type="text" id="AUTH0_AUDIENCE" autocomplete="off" placeholder="https://porchlight-api"></div>
+      <div class="now" data-now="AUTH0_AUDIENCE"></div>
+      <ol class="steps"><li>In <a href="https://manage.auth0.com/" target="_blank" rel="noopener">manage.auth0.com</a>, create an Application of type <b>Single Page Application</b>.</li>
+        <li>Allowed Callback and Logout URLs: <code id="cb"></code>. Allowed Web Origins: <code id="origin"></code>.</li>
+        <li>Create an API with the identifier <code>https://porchlight-api</code> and use that as the audience.</li></ol>
+      <div class="tools"><button class="btn" data-test="auth0">Test</button></div><div class="result" data-result="auth0"></div>
+    </section>
+
+    <section class="svc" id="svc-box">
+      <header><div><h2>The real box</h2><p class="why">A shared key so only your Arduino can press buttons for Margaret. Put the same value in the box's <code>device_config.json</code>.</p></div></header>
+      <label for="PORCHLIGHT_DEVICE_KEY">Box key</label>
+      <div class="row"><input type="password" id="PORCHLIGHT_DEVICE_KEY" autocomplete="off"><button class="btn ghost reveal" data-for="PORCHLIGHT_DEVICE_KEY">Show</button><button class="btn gen" data-for="PORCHLIGHT_DEVICE_KEY">Make one</button></div>
+      <div class="now" data-now="PORCHLIGHT_DEVICE_KEY"></div>
+      <label for="PORCHLIGHT_LINK_SECRET">Volunteer link secret <span class="muted">(makes volunteer links unguessable)</span></label>
+      <div class="row"><input type="password" id="PORCHLIGHT_LINK_SECRET" autocomplete="off"><button class="btn ghost reveal" data-for="PORCHLIGHT_LINK_SECRET">Show</button><button class="btn gen" data-for="PORCHLIGHT_LINK_SECRET">Make one</button></div>
+      <div class="now" data-now="PORCHLIGHT_LINK_SECRET"></div>
+      <p class="steps" style="padding-left:0">With a box key set, the on-screen box page needs <code>?key=…</code> in its address. The demo screen keeps working without it.</p>
+    </section>
+  </main>
+
+  <div class="savebar">
+    <label id="remember-label"><input type="checkbox" id="remember" checked> Remember on this computer</label>
+    <span class="code" id="codewrap"><input type="text" id="code" maxlength="6" placeholder="Setup code" aria-label="Setup code from the server window"></span>
+    <button class="btn primary" id="save">Save</button>
+    <span id="saved" class="small" role="status"></span>
+  </div>
+
+  <script src="api.js"></script>
+  <script src="nav.js"></script>
+  <script>
+    const NAMES = ["GEMINI_API_KEY", "GEMINI_MODEL", "AESO_API_KEY", "DATABASE_URL", "AUTH0_DOMAIN", "AUTH0_CLIENT_ID", "AUTH0_AUDIENCE", "PORCHLIGHT_DEVICE_KEY", "PORCHLIGHT_LINK_SECRET"];
+    const SERVICES = [["Gemini", "GEMINI_API_KEY"], ["Tiger Data", "DATABASE_URL"], ["AESO live", "AESO_API_KEY"], ["Auth0", "AUTH0_DOMAIN"], ["Box key", "PORCHLIGHT_DEVICE_KEY"]];
+    const SOURCE = { typed: "set on this page", remembered: "remembered on this computer", environment: "from an environment variable" };
+    const $ = id => document.getElementById(id);
+    let state = null;
+    document.getElementById("cb").textContent = [location.origin + "/", location.origin + "/index.html", location.origin + "/dashboard.html"].join(", ");
+    document.getElementById("origin").textContent = location.origin;
+
+    function headers() {
+      const h = { "Content-Type": "application/json" };
+      if ($("code").value) h["X-Setup-Code"] = $("code").value;
+      return h;
+    }
+    function typed() {
+      const v = {};
+      for (const n of NAMES) if ($(n).value.trim()) v[n] = $(n).value.trim();
+      return v;
+    }
+    function show(s) {
+      state = s;
+      for (const n of NAMES) {
+        const f = s.fields[n], node = document.querySelector(`[data-now="${n}"]`);
+        if (!node) continue;
+        node.textContent = f.set ? `Now: ${f.shown}, ${SOURCE[f.source]} ` : "Not set";
+        if (f.set && f.source !== "environment")
+          node.append(el("button", { class: "btn ghost small", style: "padding:0.1rem 0.5rem", onclick: () => clearField(n) }, "Clear"));
+      }
+      $("progress").replaceChildren(...SERVICES.map(([label, n]) =>
+        el("span", { class: `chip ${s.fields[n].set ? "on" : ""}` }, label)));
+      if (s.store_error) result("database", false, "Couldn't switch to the database: " + s.store_error);
+    }
+    function result(service, ok, detail) {
+      const node = document.querySelector(`[data-result="${service}"]`);
+      node.className = "result " + (ok ? "ok" : "bad");
+      node.textContent = detail;
+      const card = node.closest(".svc");
+      card.classList.toggle("works", ok); card.classList.toggle("failed", !ok);
+    }
+    async function clearField(n) {
+      const res = await fetch("/api/setup", { method: "POST", headers: headers(), body: JSON.stringify({ values: { [n]: "" }, remember: true }) });
+      const r = await res.json();
+      if (res.ok) { show(r); renderNav(); } else $("saved").textContent = r.detail;
+    }
+    async function load() {
+      const s = await (await fetch("/api/setup")).json();
+      if (!s.local) $("codewrap").style.display = "inline-flex";
+      if (!s.can_remember) {
+        $("remember").checked = false; $("remember").disabled = true;
+        $("remember-label").title = "This computer has no password store Porchlight can use; keys last until the server restarts.";
+        $("remember-label").lastChild.textContent = " Remember (not available here: keys last until restart)";
+      }
+      show(s);
+    }
+    document.querySelectorAll("[data-test]").forEach(b => b.addEventListener("click", async () => {
+      const service = b.dataset.test;
+      b.disabled = true; b.textContent = "Testing…";
+      try {
+        const res = await fetch(`/api/setup/test/${service}`, { method: "POST", headers: headers(), body: JSON.stringify({ values: typed() }) });
+        const r = await res.json();
+        if (!res.ok) result(service, false, r.detail || "Not allowed");
+        else result(service, r.ok, r.detail);
+      } catch (e) { result(service, false, "Couldn't reach the server"); }
+      b.disabled = false; b.textContent = service === "weather" ? "Test the weather feed" : "Test";
+    }));
+    document.querySelectorAll(".reveal").forEach(b => b.addEventListener("click", () => {
+      const i = $(b.dataset.for); i.type = i.type === "password" ? "text" : "password"; b.textContent = i.type === "password" ? "Show" : "Hide";
+    }));
+    document.querySelectorAll(".gen").forEach(b => b.addEventListener("click", () => {
+      const bytes = crypto.getRandomValues(new Uint8Array(16));
+      const i = $(b.dataset.for); i.value = Array.from(bytes, x => x.toString(16).padStart(2, "0")).join(""); i.type = "text";
+    }));
+    $("save").addEventListener("click", async () => {
+      const values = typed();
+      if (!Object.keys(values).length) { $("saved").textContent = "Nothing typed yet."; return; }
+      $("save").disabled = true; $("saved").textContent = "Saving…";
+      const res = await fetch("/api/setup", { method: "POST", headers: headers(), body: JSON.stringify({ values, remember: $("remember").checked }) });
+      const r = await res.json();
+      $("save").disabled = false;
+      if (!res.ok) { $("saved").textContent = r.detail; return; }
+      show(r);
+      NAMES.forEach(n => { $(n).value = ""; });
+      $("saved").innerHTML = `<span class="saved">Saved.</span> ${r.store !== "memory" ? "Data now goes to " + r.store + "." : ""}`;
+      renderNav();
+    });
+    renderNav(); load();
+  </script>
+</body>
+</html>
