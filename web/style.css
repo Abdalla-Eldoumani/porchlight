@@ -55,10 +55,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .introbrand img { border-radius: 14px; box-shadow: 0 0 2.5rem -0.4rem var(--amber-glow); }
 .skip { position: absolute; left: 0.75rem; top: -3rem; background: var(--amber); color: var(--ink); padding: 0.45rem 0.8rem; border-radius: 8px; font-weight: 700; z-index: 50; }
 .skip:focus { top: 0.6rem; }
-.reading { border: 1px solid var(--line-2); background: transparent; border-radius: 8px; padding: 0.2rem 0.5rem; font-weight: 800; font-size: 0.8rem; color: var(--muted); line-height: 1.2; }
-.reading { display: inline-flex; align-items: center; min-height: 1.9rem; }
-.reading > span > span { font-size: 1.05rem; }
-.reading[aria-pressed="true"] { color: var(--ink); background: var(--amber); border-color: var(--amber); }
+.readset { border: 1px solid var(--line-2); background: transparent; border-radius: 8px; padding: 0.2rem 0.5rem; font-weight: 800; font-size: 0.8rem; color: var(--muted); line-height: 1.2; }
+.readset { display: inline-flex; align-items: center; min-height: 1.9rem; }
+.readset > span > span { font-size: 1.05rem; }
+.readset[aria-pressed="true"] { color: var(--ink); background: var(--amber); border-color: var(--amber); }
 /* Reading settings, chosen by the person and remembered in this browser. */
 html.big-text { font-size: 125%; }
 html.contrast { --text: #ffffff; --muted: #d6dcea; --faint: #aab3c8; --line: #8592b3; --line-2: #b8c2dc; --panel: #000; --panel-2: #0a0a0a; --ink: #000; --ink-2: #000; }
