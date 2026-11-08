@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Porchlight · Volunteer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="mark.svg" type="image/svg+xml">
+  <style>
+    body { max-width: 34rem; margin: 0 auto; }
+    .hello { padding: 1.2rem; }
+    .hello h1 { font-size: 1.8rem; }
+    .task { margin: 0 1rem 1rem; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.1rem; }
+    .task.help { background: #2a1b1b; border-color: #5a2f2b; }
+    .task h2 { color: var(--text); text-transform: none; letter-spacing: 0; font-size: 1.5rem; margin: 0.2rem 0; }
+    .task p { margin: 0.6rem 0; font-size: 1.1rem; }
+    .eta { display: flex; gap: 0.5rem; margin: 0.8rem 0; }
+    .eta button { flex: 1; padding: 0.8rem 0; }
+    .big { width: 100%; padding: 1rem; font-size: 1.1rem; margin-top: 0.5rem; }
+    .address { font-size: 1.2rem; font-weight: 700; color: var(--amber); }
+    .empty { margin: 2rem 1rem; padding: 2rem 1rem; text-align: center; border: 1px dashed var(--line); border-radius: var(--radius); }
+  </style>
+</head>
+<body>
+  <div class="topbar"><a class="brand" href="/" aria-label="Porchlight, back to the start"><img class="mark" src="mark.svg" alt="" width="32" height="32"><span class="wordmark" aria-hidden="true">porchl<span class="i">i</span>ght</span></a><span class="topright"><span class="small muted" id="clock"></span><span id="reading"></span></span></div>
+  <section class="hello"><h1 id="hello">Loading…</h1><p class="muted" id="weather"></p></section>
+  <div id="tasks" aria-live="assertive"></div>
+  <script src="nav.js"></script>
+  <script>document.getElementById("reading").innerHTML = readingButtons();</script>
+  <script src="api.js"></script>
+  <script>
+    const token = new URLSearchParams(location.search).get("v");
+    const eta = {};
+    async function act(id, action) {
+      await fetch(`/api/v/${token}/alerts/${id}`, { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, eta_min: eta[id] || 20 }) });
+      load();
+    }
+    function task(t) {
+      const box = el("article", { class: `task ${t.rule === "help" ? "help" : ""}` },
+        el("div", { class: `status ${t.rule === "help" ? "help" : "alert"}` }, t.reason),
+        el("h2", {}, t.name, " ", el("span", { class: "muted small" }, t.community)),
+        t.message ? el("p", { dir: "auto" }, t.message) : null);
+      if (t.mine) {
+        box.append(el("p", {}, "You said you'd be there by ", el("b", {}, t.eta), "."),
+          el("p", { class: "address" }, t.address),
+          el("button", { class: "btn primary big", onclick: () => act(t.id, "resolved") }, "I'm with them, all good"),
+          el("button", { class: "btn big", onclick: () => act(t.id, "cant") }, "I can't make it after all"));
+      } else {
+        const pick = el("div", { class: "eta", role: "group", "aria-label": "How soon can you get there?" },
+          ...[10, 20, 30].map(m => el("button", { class: "btn", "aria-pressed": (eta[t.id] || 20) === m,
+            onclick: (e) => { eta[t.id] = m; pick.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b === e.target)); } }, `${m} min`)));
+        box.append(el("p", { class: "small muted" }, "How soon can you get there?"), pick,
+          el("button", { class: "btn primary big", onclick: () => act(t.id, "going") }, "I'm going"),
+          el("button", { class: "btn big", onclick: () => act(t.id, "cant") }, "I can't go, ask the next person"));
+      }
+      return box;
+    }
+    let lastIds = "";
+    async function load() {
+      const res = await fetch(`/api/v/${token}`);
+      if (!res.ok) { document.getElementById("hello").textContent = "This link isn't valid."; return; }
+      const v = await res.json();
+      document.getElementById("hello").textContent = `Hi ${v.name}`;
+      document.getElementById("clock").textContent = v.clock;
+      document.getElementById("weather").textContent = v.temp_c == null ? "" :
+        `${Math.round(v.temp_c)} °C outside${["alert", "emergency"].includes(v.level) ? ", and Alberta's grid is strained" : ""}.`;
+      const ids = v.tasks.map(t => `${t.id}:${t.mine}:${t.message ? 1 : 0}`).join(",");
+      if (ids === lastIds) return;            // don't redraw under someone's thumb
+      if (v.tasks.length > lastIds.split(",").filter(Boolean).length && navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      lastIds = ids;
+      document.getElementById("tasks").replaceChildren(...(v.tasks.length ? v.tasks.map(task)
+        : [el("div", { class: "empty muted" }, "Nothing right now. Requests show up here.")]));
+    }
+    load(); setInterval(load, 2000);
+  </script>
+</body>
+</html>
