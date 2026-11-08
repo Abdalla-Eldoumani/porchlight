@@ -1,10 +1,10 @@
 # Porchlight
 
-**Porchlight — A connected wellness monitoring and assistance system that helps nurses and caregivers stay informed about vulnerable individuals and respond when assistance is needed.** It supports older people living independently, people with disabilities, and others needing occasional help. Nurses, home-care workers, family caregivers, and authorized caregivers use the existing coordinator dashboard and responder network.
+Porchlight helps nurses, home-care workers, family caregivers and volunteer neighbours keep an eye on people who live alone, and get someone to the door when they need help. It's for older people living on their own, people with disabilities, and anyone who sometimes needs a hand.
 
-The physical prototype has one button: **single press requests assistance** after a 600 ms double-press window; **double press confirms I'm OK**. Caregivers can also request a wellness check from a resident's dashboard card. Daily check-ins, inactivity, offline-device alerts, and the existing volunteer/coordinator escalation model remain available. Cold-weather and electricity-grid checks remain secondary features, including the historical Calgary replay.
+Each person has a small box by the door with **I'm OK** and **Help**. Every morning they press I'm OK. If they don't, if they press Help, or if a caregiver asks for a check-in and gets no answer, the first person on their list is asked to go and check, then the next, then the coordinator. When it's very cold and Alberta's grid is under strain, every box asks at once.
 
-Porchlight is not a diagnostic system or fall detector, does not guarantee safety, and does not replace 911. Motion is recorded separately from a resident's manually confirmed OK.
+Porchlight doesn't diagnose anything, doesn't detect falls, and doesn't replace 911. Motion only shows someone was moving; it never counts as an I'm OK.
 
 ## Why the grid matters
 
@@ -32,7 +32,7 @@ In live mode there's no feed of EEA declarations, so the grid level comes from t
 ```
 
 - **The demo screen** (`/`) shows the box, the map and a volunteer's phone side by side, all driven by the same API that the real box, the coordinator page (`/dashboard.html`) and volunteers' phones use.
-- **The box.** An Arduino UNO Q. The microcontroller reads one button and a PIR sensor, controls red/green LEDs and the 8x13 matrix, and schedules vibration commands. Motor output is gated pending electrical verification (see below). Linux sends events over Wi-Fi and polls for backend state. A recognized gesture gives local LED feedback even offline; Help is retried and its red indication stays latched until the server has received it and explicitly reports resolution. The browser simulator (`/box.html`) keeps its two separate OK/Help controls and uses the same API without requiring hardware.
+- **The box.** An Arduino UNO Q. The microcontroller reads the button and a motion sensor and drives a green and a red light, the 8x13 LED matrix and a vibration motor. The Linux side of the board sends presses to the server over Wi-Fi and polls for what to show. A Help press lights red straight away, even with no network, and is resent until the server has it. The browser box simulator (`/box.html`) has separate I'm OK and Help buttons and uses the same API, so the demo works without the hardware.
 - **The rules decide; Gemini only words.** `server/rules.py` holds every rule: help pressed, no I'm OK by the person's cutoff time, no movement for 6 hours during the day, a box that stops checking in (20 minutes live, 60 real seconds in a replay; its power or Wi-Fi may be out, which is the reason to check), and the cold-weather check-in (at or below -25 °C *and* the grid on alert or emergency). Each alert asks the person's first volunteer, then the next one after 15 minutes (5 for help), then the coordinator. Gemini turns the facts into one or two plain sentences in the volunteer's language. Without a key, or if the call fails, a template is used.
 - **Tiger Data** stores the grid readings and device events in hypertables, and the chart reads them back through `time_bucket`. With no `DATABASE_URL` the server keeps everything in memory.
 
@@ -60,65 +60,31 @@ To switch services on, open **Keys** in the top bar, paste a key, press Test, th
 
 Tests: `python -m pytest -q`
 
-### Caregiver wellness checks (no API keys needed)
+### Asking for a check-in
 
-Open `/dashboard.html`, select **Request Check-In** on a resident card, and open `/box.html` for that resident (Margaret by default). The device polls for the request, shows a question-mark prompt, and schedules a short-short-long vibration pattern. On the physical box, double press to confirm; in the browser simulator, press **I'm OK**. The dashboard records **Check-In Confirmed** and the response time. The demo's embedded box can also submit OK, but only the standalone simulator/updated UNO Q bridge reports device receipt.
+On the coordinator page (`/dashboard.html`), **Ask for a check-in** on someone's card makes their box show a question mark and buzz. They have 5 minutes to answer with I'm OK; the card shows Pending with a countdown, then Confirmed or Unanswered. An unanswered check-in doesn't start a Help call on its own: **Send someone** on the card does that if the coordinator decides it's needed. The card also shows when the person last pressed I'm OK, when the box last saw movement, and who is assigned to them. To try it without hardware, open `/box.html` next to the dashboard and press I'm OK there.
 
-A request is **Pending** for five application-clock minutes, then **Unanswered** without creating a Help alert or making a medical conclusion. A repeated request while pending returns the same request without extending its deadline. **Request Assistance** on an unanswered card uses the existing Help/escalation workflow; **Acknowledge Assistance** accepts a Help request through the existing coordinator action route. The box keeps red on until Help is resolved, even if an OK confirms a separate wellness check. PIR motion and scripted replay responses do not confirm a manual request.
-
-The card separates manual OK, motion, last activity, responder, Help status, request timestamp/requester, countdown, and receipt status. "Device receipt confirmed" means the simulator/bridge applied the software command and acknowledged its ID on a subsequent poll; it does not prove that the person noticed it or that the motor moved. Offline/unseen devices remain awaiting receipt. The response deadline starts when the caregiver requests the check, even if the device is offline.
-
-Set `PORCHLIGHT_CHECKIN_TIMEOUT_SECONDS=300` in the environment or local `.env` to change the positive-integer timeout; no Keys-page change or service is required. Timers use the existing clock: five minutes is about ten real seconds at 30× replay, and pausing also pauses the timeout. Use 1× to test physical responses. The existing ticker evaluates expiry; replay Skip ahead also considers pending manual deadlines.
-
-The new `POST /api/residents/{rid}/check-in` uses the existing coordinator authorization (Auth0 when configured, open development mode otherwise), recording the available identity. It adds no caregiver roles or resident-specific authorization. Device responses retain `display`, `text`, and `buzz` and add `manual_check`, `help_status`, and `buzz_pattern`. The existing device GET optionally accepts `?checkin_received=<request-id>` after successful application; the device-key requirement is unchanged.
-
-The latest completed manual result remains visible until a new request, replay restart, mode reset, or server restart. Like existing operational state, this prototype feature is in memory, even with a history database. The device outbox is also in memory: network retry survives a temporary disconnection, not a Linux-process restart. No new notification service, database table, or API key is required. Gemini templates, historical data, development authentication, and memory storage still work with every key unset.
-
-The demo, pitch, About page, shared navigation labels, and Keys-page hardware copy retain the earlier community presentation. Their broader wording updates are deferred; the caregiver dashboard and this README describe the updated physical prototype.
+The time limit is `PORCHLIGHT_CHECKIN_TIMEOUT_SECONDS` (default 300). It runs on the replay clock, so at 30x speed 5 minutes passes in about 10 seconds; use 1x when testing the real box.
 
 ## The box
 
-Verified prototype connections (preserve the existing electrical setup):
+Our prototype's wiring:
 
-| Component | Pin / behavior |
+| Part | Pin |
 |---|---|
-| Adafruit Mini Basic PIR BL412 | D2 digital input; rising-edge motion events, at most once per 2 seconds |
-| Single tactile button | D3 to GND, `INPUT_PULLUP`; approximately 30 ms debounce |
-| Vibration motor control | D5, existing driver/module control: LOW off, HIGH on; gated as described below |
-| Green LED, with existing series resistor | D8; five seconds after double-press OK or motion, then off |
-| Red LED, with existing series resistor | D9; active Help takes priority over green, including while awaiting network delivery |
+| Motion sensor (Adafruit PIR) | D2 |
+| Button, to GND | D3 |
+| Vibration motor driver | D5 |
+| Green LED, with resistor | D8 |
+| Red LED, with resistor | D9 |
 
-One valid press requests Help **only after** the 600 ms double-press window. Two presses within the window produce OK only, never an initial Help. Holding the button does not repeat requests. PIR only records activity: no repeated events while HIGH, no identity/fall detection, and no automatic OK. The LED priority is active Help (red on, green off), recent OK/motion (green for five seconds), then idle (both off). Acknowledgment keeps red on; backend resolution turns it off. The matrix retains its existing symbols; the firmware does not render the browser's name/ETA text.
+The prototype reads one button: two quick presses (within 600 ms) mean I'm OK, one press means Help. Holding it down doesn't repeat. Green stays on for 5 seconds after an I'm OK or movement. Red stays on from a Help press until a coordinator marks it resolved, even if someone has already said they're going.
 
-**Motor:** D5 HIGH/LOW control was reported tested on the assembled prototype. Before enabling output, verify the actual module/driver's voltage, current, pinout, supply and protection; do not connect a bare motor directly to a GPIO. `PORCHLIGHT_MOTOR_ENABLED` defaults to `0`, so no motor GPIO output is configured. After electrical verification, set it to `1` in the sketch/build. Preserve the existing wiring; this repository does not specify an unverified motor supply or driver. Manual checks schedule 200 ms on / 150 ms off / 200 ms on / 150 ms off / 600 ms on; Help acknowledgment schedules **two 200 ms pulses** separated by 150 ms. Both use `millis()` without blocking input processing. Their command/state handling works with motor output disabled; physical vibration has not been verified by these tests.
+The motor is off by default (`PORCHLIGHT_MOTOR_ENABLED 0` in the sketch). Turn it on only once the motor is driven through a driver module, never straight from the pin. A check-in buzzes short, short, long; "someone is coming" buzzes twice.
 
-The Bridge retains `read_inputs` (OK=1, Help=2, motion=4), `show`, and legacy `buzz(ms)`. It adds `buzz_pattern(1=wellness, 2=acknowledged)` and `help_state`: low two bits are 0=none, 1=requested, 2=acknowledged, 3=resolved; bit 2 (value 4) confirms a successful Help POST and releases the local pending latch. Polls alone cannot release that latch. Overlapping wellness/acknowledgment patterns run sequentially. Deploy the updated sketch and Linux bridge together; old browser clients still ignore the optional API fields.
+In Arduino App Lab, create a new app, paste `device/porchlight-box/sketch/sketch.ino` into the sketch and `device/porchlight-box/python/main.py` into the Python part, and put a `device_config.json` beside `main.py` (see the example file). Set `server` to the laptop's address on the network (not `localhost`, which on the board means the board itself), `resident` to the person's ID, and `key` to the Box key on the Keys page. Put the board and the laptop on the same Wi-Fi, one without client isolation, and on Windows allow Python through the firewall on public networks too. Then press **Run** in App Lab; both the sketch and the Python part have to be running. To start it on power-up, turn on **Run at startup** for the app in App Lab ([Arduino's instructions](https://docs.arduino.cc/tutorials/uno-q/user-manual/#running-an-app-at-startup)).
 
-In Arduino App Lab, create a new app, paste `device/porchlight-box/sketch/sketch.ino` into the sketch and `device/porchlight-box/python/main.py` into the Python part, and put a `device_config.json` beside `main.py` (see the example file). The `key` must match the Box key on the Keys page. On Windows, allow Python through the firewall on public networks too, or the board can't reach a laptop on a phone hotspot.
-
-Set the private device config's `server` to your reachable local server URL, `resident` to the intended existing resident ID, and `key` to the server's device key if configured. The example address is a placeholder from the original demo, not a discovered server address.
-
-### Standalone Wi-Fi operation and startup
-
-The sketch talks to Linux through the UNO Q's internal Bridge, not a USB connection to the laptop. Linux uses the existing `urllib.request` HTTP client over its network connection; the dashboard talks to FastAPI independently. No serial networking, additional library, or service is needed.
-
-1. Configure the UNO Q's Wi-Fi using the existing App Lab board setup. Connect the board and backend host to a network that permits communication; guest-network/client isolation can prevent it. Keep the backend host awake, run the existing Uvicorn command on `0.0.0.0`, and allow its configured port through the host firewall.
-2. Set `device_config.json` to the backend host's reachable LAN hostname/address and port (or deployed HTTPS domain). `localhost` on the board means the board itself, not the laptop. Configure the existing device key if used; Wi-Fi credentials belong in the board's setup, not this repo.
-3. Deploy the custom App Lab app with both the sketch and Python bridge. Select the board over App Lab Network Mode and press **Run** to start it manually after Linux/Wi-Fi boot. A running MCU sketch alone is insufficient: the Linux Python app must also be running. Check the Python logs and dashboard device activity to confirm HTTP connectivity.
-4. Power the UNO Q from its appropriate external supply with no laptop USB data connection. Confirm it continues polling, sends button/motion events, and receives check-in/acknowledgment commands. The backend must stay reachable; standalone power does not make the backend run on the board.
-
-Automatic startup is **not configured by this repository**, but Arduino documents a built-in App Lab option: open the custom app's name dropdown and enable **Run at startup**, then check the DEFAULT badge. The smallest setup change is that existing per-app setting, not a new startup service. Leave it off until you choose to configure it; no board startup setting is changed by this patch. If unavailable on the installed version, manually start the app through App Lab after each boot and verify the board/version before adding any startup mechanism. Power-cycle the externally powered board and test Wi-Fi recovery and app launch before relying on an unattended demo. See the [official UNO Q startup instructions](https://docs.arduino.cc/tutorials/uno-q/user-manual/#running-an-app-at-startup).
-
-### Manual Arduino validation (physical tests still required)
-
-1. Upload the sketch and deploy the matching bridge. Keep motor output disabled until the driver/power checks above are complete. Start the local server without API keys, select replay 1×, and monitor the caregiver dashboard.
-2. Press once: no Help before the gesture window; then one Help event, red on, green off. Hold/release and introduce ordinary button bounce: no duplicate Help. Double press within 600 ms: one OK, no Help, green for approximately five seconds unless Help is already active.
-3. Trigger PIR: one motion event and five seconds of green. Hold its output HIGH: no stream of events. Check that motion changes last activity/motion but not the manual OK timestamp. Repeat within/after the two-second rate limit.
-4. Request a wellness check: verify Pending, device receipt after polling, question-mark prompt, and (only with verified motor output enabled) short-short-long vibration. Double press: Confirmed with response timestamp. Repeat without responding: Unanswered after five application minutes, unchanged activity timestamps, no new automatic Help caused by the manual timeout. A duplicate pending request must keep the same deadline.
-5. Initiate Help. Acknowledge it from the dashboard or existing responder phone: two short motor pulses when enabled, heart on the matrix, red still on. Confirm a manual wellness check while Help is active: Help remains open/red. Mark Assistance Resolved: red off.
-6. Disconnect the server/network, initiate Help, and verify red stays on with no acknowledgment. Reconnect: the bridge retries; only a caregiver acceptance produces acknowledgment, and only backend resolution clears red. Request a check while the device is offline: no receipt is reported until the client reconnects and acknowledges. Do not infer delivery from an HTTP request being queued.
-
-Automated tests compile the actual sketch against simulated GPIO/Bridge headers with motor output both enabled and disabled, and exercise the Python bridge and backend. This host compilation is not an Arduino board/toolchain build or a physical electrical test. A C++ compiler is needed for those pytest cases; they report skipped if unavailable. Existing rule tests are unchanged.
+`tests/test_device.py` compiles the real sketch against fake pins with the motor on and off and checks the button timing, the lights and the Python bridge. It needs a C++ compiler and skips itself without one. It doesn't replace trying it on the board.
 
 ## Deploy
 
