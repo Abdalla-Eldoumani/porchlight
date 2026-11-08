@@ -1,0 +1,130 @@
+{
+  "note": "Made-up demo residents and volunteers. Margaret is driven by the real box or the on-screen box; the others are simulated. Map points are the centres of their real Calgary communities (OpenStreetMap).",
+  "coordinator": {
+    "id": "coordinator",
+    "name": "Community coordinator",
+    "language": "en"
+  },
+  "volunteers": [
+    {
+      "id": "priya",
+      "name": "Priya",
+      "language": "en",
+      "token": "priya-demo"
+    },
+    {
+      "id": "sam",
+      "name": "Sam",
+      "language": "en",
+      "token": "sam-demo"
+    },
+    {
+      "id": "yusuf",
+      "name": "Yusuf",
+      "language": "ar",
+      "token": "yusuf-demo"
+    },
+    {
+      "id": "mei",
+      "name": "Mei",
+      "language": "zh",
+      "token": "mei-demo"
+    }
+  ],
+  "residents": [
+    {
+      "id": "margaret",
+      "name": "Margaret",
+      "community": "Forest Lawn",
+      "address": "17 Avenue SE (demo)",
+      "cutoff": "10:00",
+      "volunteers": [
+        "priya",
+        "sam"
+      ],
+      "has_motion": true,
+      "simulated": false,
+      "script": {
+        "ok_at": "08:15"
+      },
+      "lat": 51.0377,
+      "lon": -113.9709
+    },
+    {
+      "id": "walter",
+      "name": "Walter",
+      "community": "Bowness",
+      "address": "Bowness Road NW (demo)",
+      "cutoff": "10:00",
+      "volunteers": [
+        "sam",
+        "priya"
+      ],
+      "has_motion": true,
+      "simulated": true,
+      "script": {
+        "ok_at": "09:05",
+        "wave_reply_min": null
+      },
+      "lat": 51.0893,
+      "lon": -114.1931
+    },
+    {
+      "id": "dorothy",
+      "name": "Dorothy",
+      "community": "Marlborough",
+      "address": "Memorial Drive NE (demo)",
+      "cutoff": "10:00",
+      "volunteers": [
+        "priya",
+        "sam"
+      ],
+      "has_motion": false,
+      "simulated": true,
+      "script": {
+        "ok_at": "08:50",
+        "wave_reply_min": 6
+      },
+      "lat": 51.0589,
+      "lon": -113.9699
+    },
+    {
+      "id": "ahmed",
+      "name": "Ahmed",
+      "community": "Falconridge",
+      "address": "Falconridge Blvd NE (demo)",
+      "cutoff": "11:00",
+      "volunteers": [
+        "yusuf",
+        "sam"
+      ],
+      "has_motion": true,
+      "simulated": true,
+      "script": {
+        "ok_at": "07:40",
+        "wave_reply_min": null
+      },
+      "lat": 51.1017,
+      "lon": -113.9453
+    },
+    {
+      "id": "lin",
+      "name": "Lin",
+      "community": "Chinatown",
+      "address": "Centre Street S (demo)",
+      "cutoff": "10:00",
+      "volunteers": [
+        "mei",
+        "priya"
+      ],
+      "has_motion": false,
+      "simulated": true,
+      "script": {
+        "ok_at": "09:40",
+        "wave_reply_min": 9
+      },
+      "lat": 51.0507,
+      "lon": -114.0626
+    }
+  ]
+}
