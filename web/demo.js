@@ -26,29 +26,71 @@ async function press(kind) {
 }
 
 // ---- the map ------------------------------------------------------------------
-let project = null;
-async function drawMap() {
-  const m = await (await fetch("calgary-map.json")).json();
-  const p = m.projection;
-  project = (lat, lon) => [(lon - p.minlon) * p.cos * p.k + p.pad, (p.maxlat - lat) * p.k + p.pad];
-  const svg = $("map");
-  svg.setAttribute("viewBox", m.viewBox.join(" "));
-  svg.innerHTML = `<defs><filter id="glow" x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="5"/></filter></defs>
-    <path class="city" d="${m.city}"/>${m.rivers.map(d => `<path class="river" d="${d}"/>`).join("")}<g id="homes"></g>`;
+// Real Calgary streets from OpenStreetMap, darkened with a CSS filter to match the page. Each home is a pin with a
+// symbol and a word for its status, so it never depends on colour alone.
+const SYMBOL = { ok: "✓", asked: "?", alert: "!", help: "!!", visitor: "♥", waiting: "…" };
+let map = null;
+const pins = {};
+function drawMap() {
+  map = L.map("map", { zoomControl: false, scrollWheelZoom: false, attributionControl: true });
+  L.control.zoom({ position: "bottomright" }).addTo(map);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 18, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  }).addTo(map);
+  map.setView([51.06, -114.06], 11);
+  map.on("focus click", () => map.scrollWheelZoom.enable());
+  map.on("blur mouseout", () => map.scrollWheelZoom.disable());
+}
+// A label goes above its pin when another home sits just below it, so names don't overlap.
+function labelAbove(r) {
+  return S.residents.some(o => o !== r && o.lat < r.lat && r.lat - o.lat < 0.03 && Math.abs(o.lon - r.lon) < 0.05);
+}
+function shown(r) {
+  const c = r.box && r.box.manual_check;
+  if (r.status === "ok" && c && c.status === "pending") return "asked";
+  if (r.status === "ok" && c && c.status === "unanswered") return "alert";
+  return r.status;
+}
+function pinHTML(r) {
+  const st = shown(r), quiet = st === "ok" || st === "waiting";
+  return `<div class="pin ${st}${labelAbove(r) ? " above" : ""}"><span class="ring"></span><span class="dot">${SYMBOL[st] || ""}</span>
+    <span class="tag"><b>${r.name}</b>${quiet ? "" : `<small>${statusLabel(st)}</small>`}</span></div>`;
+}
+function statusLabel(st) {
+  return { ok: "OK", waiting: "not yet", asked: "asked", alert: "no answer", help: "Help", visitor: "someone's coming" }[st] || st;
+}
+function popupHTML(r) {
+  const c = r.box && r.box.manual_check;
+  const check = c && c.status === "pending" ? `<p class="pop-note">Check-in sent, ${Math.ceil(c.remaining_seconds / 60)} min left</p>`
+    : c && c.status === "confirmed" ? `<p class="pop-note ok">Answered the check-in</p>`
+    : c && c.status === "unanswered" ? `<p class="pop-note warn">No answer to the check-in</p>` : "";
+  return `<div class="pop"><h3>${r.name}</h3><p class="muted">${r.community} · ${r.simulated ? "simulated" : "real box"}</p>
+    <p class="status ${r.status}">${statusWords(r)}</p>
+    <p class="muted small">Last I'm OK: ${r.last_ok || "not yet"}${r.last_motion ? ` · moved ${r.last_motion}` : ""}</p>${check}
+    <button class="btn primary" ${c && c.status === "pending" ? "disabled" : ""} onclick="askCheckin('${r.id}')">Ask for a check-in</button></div>`;
+}
+async function askCheckin(rid) {
+  try { await api(`/api/residents/${rid}/check-in`, {}); } catch (e) { $("hint").textContent = "Couldn't send the check-in: " + e.message; }
+  refresh();
 }
 function drawHomes(residents) {
-  if (!project) return;
-  $("homes").innerHTML = residents.map(r => {
-    const [x, y] = project(r.lat, r.lon), c = COLOR[r.status];
-    const below = r.id === "margaret" || r.id === "dorothy" ? (r.id === "margaret" ? 36 : -26) : -26;
-    return `<g class="home ${r.status}" transform="translate(${x.toFixed(1)},${y.toFixed(1)})">
-      <title>${r.name}, ${r.community}: ${statusWords(r)}</title>
-      <circle r="20" fill="${c}" opacity="0.35" filter="url(#glow)"/>
-      <circle class="ring" r="11" stroke="${c}"/>
-      <circle class="dot" r="10" fill="${c}"/>
-      <text text-anchor="middle" y="${below}">${r.name}</text>
-      <text class="sub" text-anchor="middle" y="${below + 17}">${r.community}</text></g>`;
-  }).join("");
+  if (!map) return;
+  const fresh = !Object.keys(pins).length;
+  residents.forEach(r => {
+    const html = pinHTML(r);
+    const icon = () => L.divIcon({ className: "", html, iconSize: [26, 26], iconAnchor: [13, 13], popupAnchor: [0, -14] });
+    let p = pins[r.id];
+    if (!p) {
+      p = pins[r.id] = L.marker([r.lat, r.lon], { icon: icon(), keyboard: true, title: `${r.name}, ${r.community}`, riseOnHover: true }).addTo(map);
+      p.bindPopup("", { className: "dark-pop", maxWidth: 260 });
+      p._html = html;
+    }
+    if (p._html !== html) { p._html = html; p.setIcon(icon()); }
+    p.setZIndexOffset(["help", "alert", "asked"].includes(shown(r)) ? 1000 : 0);
+    const pop = popupHTML(r);
+    if (p._pop !== pop) { p._pop = pop; p.setPopupContent(pop); }
+  });
+  if (fresh) map.fitBounds(L.latLngBounds(residents.map(r => [r.lat, r.lon])).pad(0.12));
 }
 function statusWords(r) {
   const a = r.alert;
@@ -254,7 +296,7 @@ document.querySelectorAll("#speeds button").forEach(b => b.addEventListener("cli
   let seen = false;
   try { seen = sessionStorage.getItem("porchlight-intro") === "1"; } catch {}
   $("intro").hidden = seen;
-  await drawMap();
+  drawMap();
   links = await api("/api/volunteer-links");
   picked = links[0] && links[0].id;
   refresh();
