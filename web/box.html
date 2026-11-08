@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Porchlight · Box simulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="mark.svg" type="image/svg+xml">
+  <style>
+    body { min-height: 100vh; display: grid; grid-template-rows: auto 1fr; }
+    .stage { display: grid; place-items: center; padding: 2rem 1rem; }
+    .box { width: min(30rem, 100%); background: #e9dcc3; color: #2b2116; border-radius: 18px; padding: 1.6rem;
+           box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.45), inset 0 -6px 0 rgba(0, 0, 0, 0.12); }
+    .box.buzz { animation: buzz 0.09s linear 8; }
+    @keyframes buzz { 25% { transform: translate(-3px, 1px); } 75% { transform: translate(3px, -1px); } }
+    .screen { background: #101317; border-radius: 10px; padding: 1rem; }
+    .matrix { display: grid; grid-template-columns: repeat(13, 1fr); gap: 4px; }
+    .matrix i { aspect-ratio: 1; border-radius: 50%; background: #23272e; }
+    .matrix i.on { background: var(--amber); box-shadow: 0 0 6px 1px var(--amber-glow); }
+    .line { min-height: 2.6rem; margin-top: 0.8rem; color: var(--text); font-size: 1.2rem; text-align: center; font-weight: 700; }
+    .buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-top: 1.4rem; }
+    .press { border: none; border-radius: 50%; aspect-ratio: 1; font-family: var(--display); font-size: 1.6rem;
+             box-shadow: 0 8px 0 rgba(0, 0, 0, 0.35); transition: transform 0.06s, box-shadow 0.06s; }
+    .press:active { transform: translateY(6px); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35); }
+    .press.ok { background: #3f9c58; color: #fff; }
+    .press.help { background: #c83b33; color: #fff; }
+    .under { display: flex; justify-content: space-between; align-items: center; margin-top: 1.2rem; font-size: 0.9rem; }
+    .motion { background: transparent; border: 1px dashed #7d6a4d; border-radius: var(--radius); padding: 0.4rem 0.7rem; color: #2b2116; }
+    .conn { display: inline-flex; gap: 0.4rem; align-items: center; }
+    .conn::before { content: ""; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: #3f9c58; }
+    .conn.off::before { background: #c83b33; }
+    .note { max-width: 30rem; text-align: center; margin-top: 1.4rem; }
+  </style>
+</head>
+<body>
+  <div class="topbar"><a class="brand" href="/" aria-label="Porchlight, back to the start"><img class="mark" src="mark.svg" alt="" width="32" height="32"><span class="wordmark" aria-hidden="true">porchl<span class="i">i</span>ght</span></a><span class="muted small">box simulator</span><span class="topright"><span class="small muted" id="who"></span><span id="reading"></span></span></div>
+  <div class="stage">
+    <div>
+      <div class="box" id="box">
+        <div class="screen">
+          <div class="matrix" id="matrix" aria-hidden="true"></div>
+          <div class="line" id="line" role="status" aria-live="assertive"></div>
+        </div>
+        <div class="buttons">
+          <button class="press ok" onclick="send('ok')">I'm OK</button>
+          <button class="press help" onclick="send('help')">Help</button>
+        </div>
+        <div class="under">
+          <button class="motion" onclick="send('motion')">Walk past (motion sensor)</button>
+          <span class="conn" id="conn">Connected</span>
+        </div>
+      </div>
+      <p class="note small muted">Same API as the real box: the buttons post an event and the box polls for what to show and when to buzz.</p>
+    </div>
+  </div>
+  <script src="nav.js"></script>
+  <script>document.getElementById("reading").innerHTML = readingButtons();</script>
+  <script src="patterns.js"></script>
+  <script>
+    const q = new URLSearchParams(location.search);
+    const rid = q.get("r") || "margaret";
+    const headers = { "Content-Type": "application/json", "X-Device-Key": q.get("key") || "" };
+    const matrix = document.getElementById("matrix");
+    const dots = Array.from({ length: 104 }, () => matrix.appendChild(document.createElement("i")));
+    let lastBuzz = null, audio = null;
+    document.getElementById("who").textContent = `box for: ${rid}`;
+
+    function draw(name) {
+      const rows = PATTERNS[name] || PATTERNS.idle;
+      rows.join("").split("").forEach((c, i) => dots[i].classList.toggle("on", c === "#"));
+    }
+    function buzz() {
+      const box = document.getElementById("box");
+      box.classList.remove("buzz"); void box.offsetWidth; box.classList.add("buzz");
+      if (navigator.vibrate) navigator.vibrate(600);
+      if (!audio) return;                  // browsers only allow sound after a first tap
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.frequency.value = 880; o.connect(g); g.connect(audio.destination);
+      g.gain.setValueAtTime(0.2, audio.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.6);
+      o.start(); o.stop(audio.currentTime + 0.6);
+    }
+    function show(s) {
+      draw(s.display);
+      document.getElementById("line").textContent = s.text;
+      if (lastBuzz !== null && s.buzz > lastBuzz) buzz();
+      lastBuzz = s.buzz;
+    }
+    async function send(kind) {
+      audio = audio || new AudioContext();
+      if (kind === "ok") draw("ok");           // answer the press right away, like the real box
+      const res = await fetch(`/api/device/${rid}/event`, { method: "POST", headers, body: JSON.stringify({ kind }) });
+      if (res.ok) show(await res.json());
+    }
+    async function poll() {
+      try {
+        const res = await fetch(`/api/device/${rid}`, { headers });
+        document.getElementById("conn").classList.toggle("off", !res.ok);
+        document.getElementById("conn").textContent = res.ok ? "Connected" : "Not connected";
+        if (res.ok) show(await res.json());
+      } catch {
+        document.getElementById("conn").classList.add("off");
+        document.getElementById("conn").textContent = "Not connected";
+      }
+    }
+    draw("idle"); poll(); setInterval(poll, 1000);
+  </script>
+</body>
+</html>
