@@ -5,112 +5,169 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Porchlight · Caregivers</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;700;800&family=Atkinson+Hyperlegible+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="mark.svg" type="image/svg+xml">
   <script src="https://cdn.jsdelivr.net/npm/@auth0/auth0-spa-js@2.30.0/dist/auth0-spa-js.production.js"></script>
   <style>
-    h2 { font-family: var(--body); font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.13em; margin-bottom: 0.8rem; }
-    .now { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1.2rem 2rem; align-items: end; padding: 1.4rem 1.5rem; border-bottom: 1px solid var(--line); }
-    .now .stats { order: 3; flex-basis: 100%; }
-    .clock { font-family: var(--display); font-size: 2rem; line-height: 1.1; }
-    .mode-label { font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--amber); }
-    .stats { display: flex; gap: 2.2rem; flex-wrap: wrap; }
-    .stat b { display: block; font-family: var(--display); font-size: 1.6rem; }
-    .stat span { color: var(--muted); font-size: 0.8rem; }
-    .controls { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: flex-end; }
-    main { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 1.5rem; padding: 1.5rem; }
-    @media (max-width: 900px) { main { grid-template-columns: 1fr; } .controls { justify-content: flex-start; } }
-    .people { display: grid; gap: 0.7rem; }
-    .person { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 0.9rem 1rem; }
-    .person.help, .person.alert { background: #2a1420; border-color: rgba(255, 93, 120, 0.5); }
-    .person.visitor, .person.asked { background: #231d12; border-color: rgba(255, 181, 71, 0.4); }
-    .person header { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; }
-    .person h3 { font-size: 1.15rem; }
-    .tag { font-size: 0.72rem; border: 1px solid var(--line); border-radius: 99px; padding: 0.05rem 0.5rem; color: var(--muted); }
-    .msg { margin: 0.6rem 0 0; padding-left: 0.8rem; border-left: 2px solid var(--line); color: var(--text); }
-    .msg small { display: block; color: var(--muted); margin-top: 0.2rem; }
-    .row { display: flex; gap: 0.5rem; margin-top: 0.6rem; flex-wrap: wrap; }
-    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 1rem; margin-bottom: 1.5rem; }
-    svg text { fill: var(--muted); font-size: 11px; font-family: var(--body); }
-    .feed { list-style: none; margin: 0; padding: 0; max-height: 22rem; overflow: auto; }
-    .feed li { padding: 0.45rem 0; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 5.2rem 1fr; gap: 0.6rem; }
-    .feed time { color: var(--muted); font-variant-numeric: tabular-nums; }
-    .feed .grid { color: var(--amber); }
+    h2 { font-size: 0.95rem; }
+    /* sign-in */
+    .gate { min-height: calc(100vh - 3.6rem); display: grid; place-items: center; padding: 2rem 1.5rem; }
+    .gate .card { width: min(26rem, 100%); }
+    .gate h1 { font-size: 2rem; margin: 1.2rem 0 0.6rem; }
+    .gate p { color: var(--muted); }
+    .gate .actions { display: flex; gap: 0.6rem; margin-top: 1.4rem; flex-wrap: wrap; }
+    .gate .err { color: var(--alert); font-size: 0.9rem; }
+    .loading { color: var(--muted); padding: 3rem 1.5rem; }
+
+    /* header strip */
+    .top { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 2.2rem; padding: 0.9rem 1.5rem; border-bottom: 1px solid var(--rule); }
+    .clockbox { display: grid; }
+    .clockbox .mode { font: 700 0.76rem var(--mono); color: var(--light); }
+    .clockbox .clock { font-size: 1.45rem; font-weight: 800; letter-spacing: -0.02em; }
+    .conds { display: flex; gap: 1.6rem; flex-wrap: wrap; }
+    .cond b { display: block; font-size: 1.05rem; }
+    .cond span { font-size: 0.72rem; color: var(--muted); }
+    .controls { margin-left: auto; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+    .me { font-size: 0.82rem; color: var(--muted); padding-left: 0.6rem; border-left: 1px solid var(--rule); margin-left: 0.3rem; }
+
+    /* the console: roster, city, person */
+    .console { display: grid; grid-template-columns: 330px minmax(0, 1fr) 370px; height: calc(100vh - 3.6rem - 4.4rem); min-height: 560px; }
+    .roster { border-right: 1px solid var(--rule); overflow: auto; }
+    .group { padding: 1rem 1rem 0.3rem; font-size: 0.78rem; color: var(--muted); font-weight: 700; display: flex; justify-content: space-between; }
+    .row { display: grid; grid-template-columns: 1.6rem 1fr auto; gap: 0.2rem 0.6rem; width: 100%; text-align: left; background: transparent; border: none;
+           border-left: 3px solid transparent; padding: 0.65rem 1rem 0.65rem calc(1rem - 3px); align-items: start; }
+    .row:hover { background: var(--surface); }
+    .row[aria-current="true"] { background: var(--raised); border-left-color: var(--light); }
+    .row .g { grid-row: span 2; font: 700 0.95rem var(--mono); width: 1.6rem; height: 1.6rem; border-radius: 50%; display: grid; place-items: center; margin-top: 0.1rem; }
+    .row .g.ok { background: var(--ok); color: var(--ink); } .row .g.waiting { border: 2px solid var(--faint); color: var(--faint); }
+    .row .g.asked, .row .g.visitor { border: 2px solid var(--light); color: var(--light); } .row .g.alert, .row .g.help { background: var(--alert); color: var(--ink); }
+    .row .n { font-weight: 800; }
+    .row .n small { font-weight: 400; color: var(--muted); margin-left: 0.35rem; }
+    .row .t { font: 0.75rem var(--mono); color: var(--faint); }
+    .row .s { grid-column: 2 / -1; font-size: 0.82rem; color: var(--muted); }
+    .row .s.urgent { color: var(--alert); font-weight: 700; } .row .s.warm { color: var(--light); font-weight: 700; }
+    .calm { margin: 1rem; padding: 1rem; border: 1px solid var(--rule); border-radius: 8px; }
+    .calm b { display: block; }
+    .calm p { margin: 0.3rem 0 0.8rem; font-size: 0.86rem; color: var(--muted); }
+    .city { position: relative; }
+    .city .mapframe { position: absolute; inset: 0; border: none; border-radius: 0; }
+    .person { border-left: 1px solid var(--rule); overflow: auto; padding: 1.3rem 1.3rem 2rem; }
+    .person .who h2 { font-size: 1.7rem; letter-spacing: -0.02em; }
+    .person .who p { margin: 0.15rem 0 0; color: var(--muted); font-size: 0.88rem; }
+    .person .state { margin: 1.1rem 0; padding: 0.8rem 0.9rem; border-radius: 8px; background: var(--surface); border: 1px solid var(--rule); }
+    .person .state.urgent { background: var(--alert-soft); border-color: rgba(255, 114, 98, 0.45); }
+    .person .state.warm { background: var(--light-soft); border-color: rgba(242, 181, 68, 0.4); }
+    .person .state .status { font-size: 1.05rem; }
+    .person .state p { margin: 0.35rem 0 0; font-size: 0.86rem; color: var(--muted); }
+    .facts { display: grid; grid-template-columns: auto 1fr; gap: 0.4rem 1rem; margin: 0 0 1.1rem; font-size: 0.88rem; }
+    .facts dt { color: var(--muted); }
+    .facts dd { margin: 0; }
+    .msg { margin: 0 0 1.1rem; padding: 0.7rem 0.9rem; border-left: 2px solid var(--light); background: var(--surface); }
+    .msg small { display: block; color: var(--faint); margin-top: 0.35rem; font-size: 0.74rem; }
+    .actions { display: grid; gap: 0.5rem; }
+    .actions .btn { width: 100%; }
+    .next { font-size: 0.8rem; color: var(--muted); margin-top: 0.7rem; }
+    #action-status { min-height: 1.2rem; font-size: 0.84rem; color: var(--ok); margin-top: 0.6rem; }
+    #action-status.err { color: var(--alert); }
+
+    /* below the console */
+    .lower { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr); gap: 2rem; padding: 1.6rem 1.5rem 2.5rem; border-top: 1px solid var(--rule); }
+    .lower h2 { margin-bottom: 0.7rem; }
+    .feed { list-style: none; margin: 0; padding: 0; max-height: 20rem; overflow: auto; }
+    .feed li { padding: 0.45rem 0; border-bottom: 1px solid var(--rule); display: grid; grid-template-columns: 6.2rem 1fr; gap: 0.6rem; font-size: 0.88rem; }
+    .feed time { font-family: var(--mono); color: var(--faint); white-space: nowrap; font-size: 0.8rem; }
+    .feed .grid { color: var(--light); }
     .feed .alert, .feed .escalated { color: var(--alert); }
-    .trust { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.5rem; padding: 0 1.5rem 2rem; }
-    @media (max-width: 900px) { .trust { grid-template-columns: 1fr; } }
-    .trust ul { margin: 0; padding-left: 1.1rem; }
-    #signin { display: none; padding: 4rem 1.5rem; text-align: center; }
-    .banner { background: #2b2414; color: var(--amber); padding: 0.4rem 1.5rem; font-size: 0.85rem; }
+    svg text { fill: var(--faint); font: 10px var(--mono); }
+    .trust h3 { font-size: 0.85rem; margin: 1.1rem 0 0.35rem; }
+    .trust h3:first-child { margin-top: 0; }
+    .trust ul { margin: 0; padding-left: 1.1rem; font-size: 0.86rem; }
+    .trust p { margin: 0.3rem 0; }
+    .services { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1.1rem; }
+
+    @media (max-width: 1150px) {
+      .console { grid-template-columns: 300px minmax(0, 1fr); height: auto; }
+      .city { min-height: 460px; }
+      .person { grid-column: 1 / -1; border-left: none; border-top: 1px solid var(--rule); }
+      .lower { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 720px) {
+      .console { grid-template-columns: 1fr; }
+      .roster { border-right: none; }
+      .city { min-height: 380px; }
+      .controls { margin-left: 0; }
+    }
   </style>
 </head>
 <body>
   <nav id="nav"></nav>
   <div id="banner"></div>
+  <p class="loading" id="loading">Checking your sign-in…</p>
 
-  <section id="signin">
-    <h1>Caregiver sign-in</h1>
-    <p class="muted">Only signed-in caregivers can see how people are doing.</p>
-    <button class="btn primary" onclick="signIn()">Sign in</button>
+  <section class="gate" id="signin" hidden>
+    <div class="card">
+      <img src="mark.svg" alt="" width="44" height="44">
+      <h1>Caregiver sign-in</h1>
+      <p>Signed-in caregivers can see how the people they look after are doing, ask for a check-in, and say they're on the way.</p>
+      <p class="err" id="signin-error" role="alert"></p>
+      <div class="actions">
+        <button class="btn primary" onclick="signIn()">Sign in</button>
+        <a class="btn" href="/">See the demo first</a>
+      </div>
+    </div>
   </section>
 
   <div id="app" hidden>
-    <section class="now" aria-label="Right now">
-      <div>
-        <div class="mode-label" id="mode"></div>
-        <div class="clock" id="clock"></div>
-      </div>
-      <div class="stats" id="stats"></div>
-      <div class="controls"><span id="who" class="small muted" style="align-self:center"></span>
+    <section class="top" aria-label="Right now">
+      <div class="clockbox"><span class="mode" id="mode"></span><span class="clock" id="clock"></span></div>
+      <div class="conds" id="stats"></div>
+      <div class="controls">
         <button class="btn" onclick="setMode('replay', 30)">Replay Jan 13, 2024</button>
-        <button class="btn speed" data-speed="0" onclick="setSpeed(0)">Pause</button>
-        <button class="btn speed" data-speed="30" onclick="setSpeed(30)">30×</button>
-        <button class="btn speed" data-speed="60" onclick="setSpeed(60)">60×</button>
-        <button class="btn speed" data-speed="120" onclick="setSpeed(120)">120×</button>
-        <button class="btn" onclick="setMode('live')">Live now</button>
+        <div class="seg" role="group" aria-label="Replay speed">
+          <button class="speed" data-speed="0" onclick="setSpeed(0)" aria-label="Pause">II</button>
+          <button class="speed" data-speed="30" onclick="setSpeed(30)">30×</button>
+          <button class="speed" data-speed="120" onclick="setSpeed(120)">120×</button>
+        </div>
+        <button class="btn ghost" onclick="setMode('live')">Live</button>
+        <span class="me" id="who"></span>
       </div>
     </section>
 
-    <main id="main">
-      <section aria-labelledby="h-people">
-        <h2 id="h-people">People</h2>
-        <p class="small muted">Movement only means someone moved. It never counts as an I'm OK.</p>
-        <p id="action-status" class="small" role="status"></p>
-        <div class="people" id="people" aria-live="polite"></div>
-      </section>
-      <section>
-        <div class="panel">
-          <h2>The grid that day</h2>
-          <svg id="chart" viewBox="0 0 640 230" role="img" aria-label="Alberta electricity demand and pool price by hour"></svg>
-          <p class="small muted" id="chart-note"></p>
-        </div>
-        <div class="panel">
-          <h2>What happened</h2>
-          <ol class="feed" id="feed" aria-live="polite" reversed></ol>
-        </div>
-      </section>
+    <main class="console" id="main">
+      <nav class="roster" id="people" aria-label="People"></nav>
+      <section class="city" aria-label="Map of Calgary"><div class="mapframe"><div id="map" style="height:100%"></div></div></section>
+      <section class="person" id="person" aria-live="polite"></section>
     </main>
 
-    <section class="trust" aria-label="Trust and transparency">
-      <div class="panel">
-        <h2>What Margaret's box sends</h2>
-        <p class="small muted">Only button presses and "someone moved". No camera, no microphone, no audio.</p>
-        <ul id="sent" class="small"></ul>
+    <section class="lower">
+      <div>
+        <h2>What happened</h2>
+        <ol class="feed" id="feed" aria-live="polite"></ol>
       </div>
-      <div class="panel">
-        <h2>Who looked at what</h2>
-        <ul id="access" class="small"></ul>
+      <div>
+        <h2>The grid that day</h2>
+        <svg id="chart" viewBox="0 0 640 230" role="img" aria-label="Alberta electricity demand and pool price by hour"></svg>
+        <p class="small muted" id="chart-note"></p>
       </div>
-      <div class="panel">
-        <h2>Volunteer links</h2>
-        <ul id="links" class="small"></ul>
-        <p class="small muted">Volunteers don't need an account. The address only shows after they say they're going.</p>
+      <div class="trust">
+        <h3>What Margaret's box sends</h3>
+        <p class="small muted">Button presses and "someone moved". No camera, no microphone.</p>
+        <ul id="sent"></ul>
+        <h3>Who looked at what</h3>
+        <ul id="access"></ul>
+        <h3>Caregiver phone links</h3>
+        <ul id="links"></ul>
+        <p class="small muted">No account needed. The address only shows after they say they're going.</p>
+        <div class="services" id="services"></div>
       </div>
     </section>
   </div>
   <script src="api.js"></script>
   <script src="nav.js"></script>
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script src="map.js"></script>
   <script src="dashboard.js"></script>
 </body>
 </html>
