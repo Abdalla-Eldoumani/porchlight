@@ -80,7 +80,7 @@ Our prototype's wiring:
 
 The prototype reads one button: two quick presses (within 600 ms) mean I'm OK, one press means Help. Holding it down doesn't repeat. Green stays on for 5 seconds after an I'm OK or movement. Red stays on from a Help press until a coordinator marks it resolved, even if someone has already said they're going.
 
-The motor is off by default (`PORCHLIGHT_MOTOR_ENABLED 0` in the sketch). Turn it on only once the motor is driven through a driver module, never straight from the pin. A check-in buzzes short, short, long; "someone is coming" buzzes twice.
+The motor is a 3-pin vibration module on D5 (VCC to 5V, GND, IN to D5), switched on with `PORCHLIGHT_MOTOR_ENABLED 1` in the sketch. Set it to 0 for a bare motor without a driver; never run one straight from the pin. A check-in buzzes short, short, long; "someone is coming" buzzes twice.
 
 In Arduino App Lab, create a new app, paste `device/porchlight-box/sketch/sketch.ino` into the sketch and `device/porchlight-box/python/main.py` into the Python part, and put a `device_config.json` beside `main.py` (see the example file). Set `server` to the laptop's address on the network (not `localhost`, which on the board means the board itself), `resident` to the person's ID, and `key` to the Box key on the Keys page. Put the board and the laptop on the same Wi-Fi, one without client isolation, and on Windows allow Python through the firewall on public networks too. Then press **Run** in App Lab; both the sketch and the Python part have to be running. To start it on power-up, turn on **Run at startup** for the app in App Lab ([Arduino's instructions](https://docs.arduino.cc/tutorials/uno-q/user-manual/#running-an-app-at-startup)).
 
