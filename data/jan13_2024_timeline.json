@@ -1,0 +1,12 @@
+{
+  "source": "Alberta Market Surveillance Administrator, January and April 2024 Event Report, section 1 (https://www.albertamsa.ca/assets/Documents/January-and-April-2024-Event-Report.pdf)",
+  "note": "The report gives no end time for the January 13 EEA. Supply adequacy was back to normal by hour ending 22 (p. 21), so the alert window here ends at 21:00.",
+  "events": [
+    {"time": "2024-01-13T15:30:00-07:00", "level": "alert", "text": "AESO declares Energy Emergency Alert 3. Exports curtailed.", "page": 32},
+    {"time": "2024-01-13T16:17:00-07:00", "level": "alert", "text": "AESO starts directing contingency reserves.", "page": 26},
+    {"time": "2024-01-13T17:32:00-07:00", "level": "alert", "text": "All contingency reserve is directed for six minutes.", "page": 27},
+    {"time": "2024-01-13T18:44:00-07:00", "level": "emergency", "text": "Alberta Emergency Alert sent to phones asking people to cut electricity use.", "page": 6},
+    {"time": "2024-01-13T18:56:00-07:00", "level": "emergency", "text": "Contingency reserve directives end.", "page": 26},
+    {"time": "2024-01-13T21:00:00-07:00", "level": "watch", "text": "Supply back to normal by the next hour. Prices still high.", "page": 21}
+  ]
+}
