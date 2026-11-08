@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Porchlight · Nurse / Caregiver</title>
+  <title>Porchlight · Caregivers</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
@@ -50,8 +50,8 @@
   <div id="banner"></div>
 
   <section id="signin">
-    <h1>Nurse / Caregiver sign-in</h1>
-    <p class="muted">Authorized caregivers use the existing coordinator sign-in to view residents' status.</p>
+    <h1>Caregiver sign-in</h1>
+    <p class="muted">Only signed-in caregivers can see how people are doing.</p>
     <button class="btn primary" onclick="signIn()">Sign in</button>
   </section>
 
@@ -74,8 +74,8 @@
 
     <main id="main">
       <section aria-labelledby="h-people">
-        <h2 id="h-people">Resident wellness monitoring</h2>
-        <p class="small muted">Helping nurses and caregivers stay informed and respond to requests for assistance. Motion is activity, not a confirmed OK or a medical assessment.</p>
+        <h2 id="h-people">People</h2>
+        <p class="small muted">Movement only means someone moved. It never counts as an I'm OK.</p>
         <p id="action-status" class="small" role="status"></p>
         <div class="people" id="people" aria-live="polite"></div>
       </section>
@@ -103,7 +103,7 @@
         <ul id="access" class="small"></ul>
       </div>
       <div class="panel">
-        <h2>Caregiver / volunteer response links</h2>
+        <h2>Volunteer links</h2>
         <ul id="links" class="small"></ul>
         <p class="small muted">Volunteers don't need an account. The address only shows after they say they're going.</p>
       </div>
