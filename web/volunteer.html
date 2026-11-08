@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Porchlight · Volunteer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;700;800&family=Atkinson+Hyperlegible+Mono:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="mark.svg" type="image/svg+xml">
   <style>
@@ -58,21 +58,22 @@
       }
       return box;
     }
-    let lastIds = "";
+    let lastIds = null;
     async function load() {
       const res = await fetch(`/api/v/${token}`);
       if (!res.ok) { document.getElementById("hello").textContent = "This link isn't valid."; return; }
       const v = await res.json();
+      v.tasks.sort((a, b) => (b.rule === "help") - (a.rule === "help"));   // a Help press always comes first
       document.getElementById("hello").textContent = `Hi ${v.name}`;
       document.getElementById("clock").textContent = v.clock;
       document.getElementById("weather").textContent = v.temp_c == null ? "" :
         `${Math.round(v.temp_c)} °C outside${["alert", "emergency"].includes(v.level) ? ", and Alberta's grid is strained" : ""}.`;
       const ids = v.tasks.map(t => `${t.id}:${t.mine}:${t.message ? 1 : 0}`).join(",");
       if (ids === lastIds) return;            // don't redraw under someone's thumb
-      if (v.tasks.length > lastIds.split(",").filter(Boolean).length && navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      if (lastIds !== null && v.tasks.length > lastIds.split(",").filter(Boolean).length && navigator.vibrate) navigator.vibrate([200, 100, 200]);
       lastIds = ids;
       document.getElementById("tasks").replaceChildren(...(v.tasks.length ? v.tasks.map(task)
-        : [el("div", { class: "empty muted" }, "Nothing right now. Requests show up here.")]));
+        : [el("div", { class: "empty muted" }, "Nothing right now. When someone needs a visit, it shows up here.")]));
     }
     load(); setInterval(load, 2000);
   </script>
