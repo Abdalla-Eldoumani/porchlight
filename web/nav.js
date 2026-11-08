@@ -30,8 +30,8 @@ function brandHTML() {
 function readingButtons() {
   let s = {};
   try { s = JSON.parse(localStorage.getItem("porchlight-reading") || "{}"); } catch {}
-  return `<button class="reading" data-reading="big" aria-pressed="${!!s.big}" onclick="toggleReading('big')" title="Bigger text"><span aria-hidden="true">A<span>A</span></span><span class="sr-only">Bigger text</span></button>
-      <button class="reading" data-reading="contrast" aria-pressed="${!!s.contrast}" onclick="toggleReading('contrast')" title="High contrast"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 1.5a6.5 6.5 0 0 1 0 13z" fill="currentColor"/></svg><span class="sr-only">High contrast</span></button>`;
+  return `<button class="readset" data-reading="big" aria-pressed="${!!s.big}" onclick="toggleReading('big')" title="Bigger text"><span aria-hidden="true">A<span>A</span></span><span class="sr-only">Bigger text</span></button>
+      <button class="readset" data-reading="contrast" aria-pressed="${!!s.contrast}" onclick="toggleReading('contrast')" title="High contrast"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 1.5a6.5 6.5 0 0 1 0 13z" fill="currentColor"/></svg><span class="sr-only">High contrast</span></button>`;
 }
 
 async function renderNav() {
